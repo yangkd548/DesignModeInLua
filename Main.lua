@@ -9,4 +9,5 @@ require("oop.StringExtend")
 require("oop.Class")
 Limit_G()
 
-require("examples.singleton.SingletonTest").new():ExecTest()
+-- require("examples.singleton.SingletonTest").new():ExecTest()
+require("examples.factory.FactoryTest").new():ExecTest()

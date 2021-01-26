@@ -19,7 +19,7 @@ end
 -- end
 
 function _M.public:ShowMessage()
-    print("Hello World : Executes a method on the singleton object!");
+    print("Singleton Test: Hello World !");
 end
 
 return _M
