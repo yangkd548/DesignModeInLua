@@ -1,7 +1,7 @@
 --[[
-    module:Interface
-    author:DylanYang
-    time:2020-11-12 12:02:18
+    Module:Interface
+    Author:DylanYang
+    Time:2020-11-12 12:02:18
 ]]
 local function ErrorNameFront(name, level)
     error(string.format("The front of name (%s) is not 'I'(capital i).", name), level or 3)

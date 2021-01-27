@@ -1,23 +1,18 @@
 --[[
-    module:FactoryTest
-    author:DylanYang
-    time:2021-01-26 19:32:54
+    Module:FactoryTest
+    Author:DylanYang
+    Time:2021-01-26 19:32:54
 ]]
 local ShapeFactory = require("examples.factory.ShapeFactory")
 
-local _M = Class("FactoryTest")
-local public = _M.public
+local super = require("examples.BaseTest")
+local _M = Class("FactoryTest", super)
 
-function public:ExecTest()
+function _M.protected:DoExecTest()
     local factory = ShapeFactory.new()
-    local circle = factory:CreateShape("Circle")
-    print("factory:", circle)
-    -- circle:Draw()
-
-    print("direct -1:", require("examples.factory.Shape").new())
-    print("direct -2:", require("examples.factory.Circle").new())
-    -- factory:CreateShape("Rectangle"):Draw()
-    -- factory:CreateShape("Square"):Draw()
+    factory:CreateShape("Circle"):Draw()
+    factory:CreateShape("Rectangle"):Draw()
+    factory:CreateShape("Square"):Draw()
 end
 
 return _M

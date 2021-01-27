@@ -1,7 +1,7 @@
 --[[
-    module:Class
-    author:DylanYang
-    time:2020-10-14 16:08:08
+    Module:Class
+    Author:DylanYang
+    Time:2020-10-14 16:08:08
 ]]
 require("oop.Readonly")
 require("oop.Bit")
@@ -243,14 +243,16 @@ local function Is__Property(k)
     return IsString(k) and string.find(k, "__") == 1
 end
 
---cls向shell、superCls、superShell，转换
+--由cls获取shell
 local function GetSuperCls(cls)
     local mt = getmetatable(cls)
     return mt and mt.__index or nil
 end
+--由cls获取clsSuper
 local function GetClsShell(cls)
     return cls.__shell
 end
+--由cls获取superShell
 local function GetSuperShell(cls)
     return GetClsShell(GetSuperCls(cls))
 end
@@ -615,33 +617,39 @@ end
 
 local function CheckDomain(k, cls, member)
     -- print("\t\t\t访问:  ", cls.__name, k)
-    local _, inst = debug.getlocal(4, 1)
-    local domain = member.d
-    if not IsTable(inst) then
-        AllowPublic(domain, cls, k)
-    else
-        local _, inst = debug.getlocal(3, 1)---1,1是自身语句，2,1是当前方法，3,1是当前文件，4,1是外部类
-        -- print("")
-        -- print("--------",GetInstClassName(inst), GetClassName(cls))
-        if not IsTheClass(inst, cls) then
-            -- print("--------",GetInstClassName(inst), GetClassName(cls))
-            if IsInstSuperClass(inst, cls) then
-                DisablePrivate(domain, cls, k)
-            else
-                AllowPublic(domain, cls, k)
-            end
-        end
-    end
+    -- local _, inst = debug.getlocal(2, 1)
+    -- if inst.__name == member.c.__name then
+    --     return true
+    -- end
+    -- local _, inst = debug.getlocal(4, 1)
+    -- local domain = member.d
+    -- if not IsTable(inst) then
+    --     AllowPublic(domain, cls, k)
+    -- else
+    --     local _, inst = debug.getlocal(3, 1)---1,1是自身语句，2,1是当前方法，3,1是当前文件，4,1是外部类
+    --     -- print("")
+    --     -- print("--------",GetInstClassName(inst), GetClassName(cls))
+    --     if not IsTheClass(inst, cls) then
+    --         -- print("--------",GetInstClassName(inst), GetClassName(cls))
+    --         if IsInstSuperClass(inst, cls) then
+    --             DisablePrivate(domain, cls, k)
+    --         else
+    --             AllowPublic(domain, cls, k)
+    --         end
+    --     end
+    -- end
     return true
 end
 
-local FuncFormat = "return function(t, func, args) local %s = func; %s(unpack(args)); end"
+--@desc 所有的方法执行，都应进行返回值的传递处理
+local FuncFormat = "return function(t, func, args) local %s = func; return %s(unpack(args)); end"
 local function GetFuncProxy(t, k, member)
     return function(...)
         local args = {...}
         if args[1] or args[1] == t then
-            local tempFunc = loadstring(string.format(FuncFormat, k, k)); 
-            tempFunc()(t, member.v, args)
+            local tempFunc = loadstring(string.format(FuncFormat, k, k));
+            --@desc 所有的方法执行，都应进行返回值的传递处理
+            return tempFunc()(t, member.v, args)
         else
             ErrorDotAttemptFunc(k)
         end
@@ -663,7 +671,10 @@ local function RealizeInstanceOOP(cls)
             if member == nil then
                 ErrorNoExist(cls, k)
             else
-                if CheckDomain(k, cls, member) then
+                --增加：特定非member类型（暂时只支持string和number类型），直接返回
+                if type(member) == "string" or type(member) == "number" then
+                    return member
+                elseif CheckDomain(k, cls, member) then
                     if member.t == MemberType.set then
                         ErrorGet(cls, k)
                     elseif member.t == MemberType.get then

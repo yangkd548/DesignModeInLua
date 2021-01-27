@@ -1,7 +1,7 @@
 --[[
-    module:Singleton
-    author:DylanYang
-    time:2021-01-26 14:56:16
+    Module:Singleton
+    Author:DylanYang
+    Time:2021-01-26 14:56:16
 ]]
 --https://www.runoob.com/design-pattern/singleton-pattern.html
 local _M = Class("Singleton")

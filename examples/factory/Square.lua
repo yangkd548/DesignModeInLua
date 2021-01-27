@@ -1,7 +1,7 @@
 --[[
-    module:Square
-    author:DylanYang
-    time:2021-01-26 19:22:09
+    Module:Square
+    Author:DylanYang
+    Time:2021-01-26 19:22:09
 ]]
 local interface = require("examples.factory.Shape")
 local _M = Class("Square", interface)

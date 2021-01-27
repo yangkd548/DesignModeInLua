@@ -1705,8 +1705,8 @@ local function debugger_getVarByKeys(value, keys, index)
 end
 --[[
     @desc: 查找c# 值
-    author:k0204
-    time:2018-04-07 21:32:31
+    Author:k0204
+    Time:2018-04-07 21:32:31
     return
 ]]
 local function debugger_getCSharpValue(value, searchIndex, keys)
@@ -1767,8 +1767,8 @@ local function debugger_searchVarByKeys(value, keys, searckKeys)
 end
 --[[
     @desc: 获取metatable 信息
-    author:k0204
-    time:2018-04-06 20:27:12
+    Author:k0204
+    Time:2018-04-06 20:27:12
     return
 ]]
 local function debugger_getmetatable(value, metatable, vinfos, server, variablesReference, debugSpeedIndex, metatables)

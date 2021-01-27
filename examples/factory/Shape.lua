@@ -1,7 +1,7 @@
 --[[
-    module:Shape
-    author:DylanYang
-    time:2021-01-26 19:18:24
+    Module:Shape
+    Author:DylanYang
+    Time:2021-01-26 19:18:24
 ]]
 local _M = Class("Shape")
 local public = _M.public

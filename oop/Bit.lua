@@ -1,7 +1,7 @@
 --[[
-    module:Bit
-    author:DylanYang
-    time:2020-10-28 09:00:01
+    Module:Bit
+    Author:DylanYang
+    Time:2020-10-28 09:00:01
 ]]
 require("oop.Readonly")
 
