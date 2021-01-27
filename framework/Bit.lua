@@ -3,7 +3,7 @@
     Author:DylanYang
     Time:2020-10-28 09:00:01
 ]]
-require("oop.Readonly")
+require("framework.Readonly")
 
 local Bit = {data32 = {}}
 for i = 1, 32 do

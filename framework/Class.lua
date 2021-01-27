@@ -3,10 +3,10 @@
     Author:DylanYang
     Time:2020-10-14 16:08:08
 ]]
-require("oop.Readonly")
-require("oop.Bit")
-require("oop.BaseExtend")
-require("oop.TableExtend")
+require("framework.Readonly")
+require("framework.Bit")
+require("framework.BaseExtend")
+require("framework.TableExtend")
 
 function Import(moduleName, currentModuleName)
     local currentModuleNameParts
