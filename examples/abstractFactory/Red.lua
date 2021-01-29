@@ -6,7 +6,7 @@
 local _M = Class("Red")
 
 function _M.public:Fill()
-    print(string.format("Abstract Factory Test: I'm a %s !", self.__name, "（红色）"))
+    print(string.format("Abstract Factory Test: I'm a %s%s !", self.__name, "（红色）"))
 end
 
 return _M

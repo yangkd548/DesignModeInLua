@@ -14,17 +14,14 @@ function _M.protected:DoExecTest()
     local factoryProducer = FactoryProducer.new()
     
     local shapeFactory = factoryProducer:GetFactory("SHAPE")
+    shapeFactory:GetShape("CIRCLE"):Draw()
+    shapeFactory:GetShape("RECTANGLE"):Draw()
+    shapeFactory:GetShape("SQUARE"):Draw()
 
-    local circle = shapeFactory:GetShape("CIRCLE")
-    circle:Draw()
-    -- shapeFactory:GetShape("CIRCLE"):Draw()
-    -- shapeFactory:GetShape("RECTANGLE"):Draw()
-    -- shapeFactory:GetShape("SQUARE"):Draw()
-
-    -- local colorFactory = factoryProducer:GetFactory("COLOR")
-    -- colorFactory:GetColor("RED"):Fill()
-    -- colorFactory:GetColor("Green"):Fill()
-    -- colorFactory:GetColor("BLUE"):Fill()
+    local colorFactory = factoryProducer:GetFactory("COLOR")
+    colorFactory:GetColor("RED"):Fill()
+    colorFactory:GetColor("Green"):Fill()
+    colorFactory:GetColor("BLUE"):Fill()
 end
 
 return _M

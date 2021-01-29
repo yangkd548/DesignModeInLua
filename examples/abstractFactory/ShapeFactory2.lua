@@ -11,11 +11,12 @@ local super = require("examples.abstractFactory.AbstractFactory")
 local _M = Class("ShapeFactory2", super)
 
 function _M.public:GetShape(typeStr)
-    if typeStr == "Circle" then
+    typeStr = string.upper(typeStr)
+    if typeStr == "CIRCLE" then
         return Circle.new()
-    elseif typeStr == "Rectangle" then
+    elseif typeStr == "RECTANGLE" then
         return Rectangle.new()
-    elseif typeStr == "Square" then
+    elseif typeStr == "SQUARE" then
         return Square.new()
     else
         return nil
