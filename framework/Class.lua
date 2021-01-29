@@ -315,7 +315,6 @@ local function ChangeClass(inst, cls, newCls)
     setmetatable(inst, newCls)
     cls.__metatable = OOP_MT_NAMES.class
 end
-local SuperFuncFormat = "return function(inst, func, args) local %s = func; %s(inst, unpack(args)); end"
 local function GetSuperFuncProxy(proxy, inst, cls, super, k)
     local member = super[k]
     local func = member.v
@@ -327,7 +326,7 @@ local function GetSuperFuncProxy(proxy, inst, cls, super, k)
         if args[1] == proxy then
             ChangeClass(inst, cls, super)
             table.remove(args, 1)
-            local tempFunc = loadstring(string.format(SuperFuncFormat, k, k)); 
+            local tempFunc = loadstring(string.format(FuncFormat, k, k)) 
             tempFunc()(inst, func, args)
             ChangeClass(inst, super, cls)
         else
@@ -617,9 +616,11 @@ end
 
 local function CheckDomain(k, cls, member)
     -- print("\t\t\t访问:  ", cls.__name, k)
-    -- local _, inst = debug.getlocal(2, 1)
-    -- if inst.__name == member.c.__name then
-    --     return true
+    -- if k == "PrintStartLine" then
+    --     local _, inst = debug.getlocal(2, 1)
+    --     if inst.__name == member.c.__name then
+    --         return true
+    --     end
     -- end
     -- local _, inst = debug.getlocal(4, 1)
     -- local domain = member.d
@@ -642,7 +643,7 @@ local function CheckDomain(k, cls, member)
 end
 
 --@desc 所有的方法执行，都应进行返回值的传递处理
-local FuncFormat = "return function(t, func, args) local %s = func; return %s(unpack(args)); end"
+local FuncFormat = "return function(t, func, args) local %s = func; return %s(t, unpack(args)); end"
 local function GetFuncProxy(t, k, member)
     return function(...)
         local args = {...}

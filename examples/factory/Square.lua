@@ -8,7 +8,7 @@ local _M = Class("Square", interface)
 local public = _M.public
 
 function public:Draw()
-    print(string.format("Factory Test: I'm a %s !", "Square（正方形）"))
+    print(string.format("Factory Test: I'm a %s%s !", self.__name, "（正方形）"))
 end
 
 return _M
