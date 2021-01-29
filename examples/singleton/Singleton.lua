@@ -6,7 +6,7 @@
 --https://www.runoob.com/design-pattern/singleton-pattern.html
 local _M = Class("Singleton")
 
-local _instance = nil;
+local _instance = nil
 function _M.static.get:instance()
     if _instance == nil then
         _instance = _M.new()
@@ -19,7 +19,7 @@ end
 -- end
 
 function _M.public:ShowMessage()
-    print("Singleton Test: Hello World !");
+    print("Singleton Test: Hello World !")
 end
 
 return _M
