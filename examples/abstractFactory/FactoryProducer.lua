@@ -10,9 +10,7 @@ local _M = Class("FactoryProducer")
 
 function _M.public:GetFactory(choice)
     if choice == "SHAPE" then
-        local shapeFactory = ShapeFactory.new()
-        print("", shapeFactory)
-        return shapeFactory
+        return ShapeFactory.new()
     elseif choice == "COLOR" then
         return ColorFactory.new()
     end
