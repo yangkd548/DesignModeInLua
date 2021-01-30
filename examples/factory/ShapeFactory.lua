@@ -9,7 +9,7 @@ local Square = require("examples.factory.Square")
 
 local _M = Class("ShapeFactory")
 
-function _M.protected:CreateShape(typeStr)
+function _M.public:CreateShape(typeStr)
     if typeStr == "Circle" then
         return require("examples.factory.Circle").new()
     elseif typeStr == "Rectangle" then

@@ -600,6 +600,8 @@ end
 --@endregion
 
 --@region instance OOP
+
+--判定为外部访问，只能是public访问域，否则按访问域进行报错提示
 local function AllowPublic(domain, cls, k)
     if domain ~= DomainType.public then
         if domain == DomainType.protected then
@@ -610,37 +612,30 @@ local function AllowPublic(domain, cls, k)
     end
 end
 
+--判定为子类访问，唯独不能访问private的访问域
 local function DisablePrivate(domain, cls, k)
     if domain == DomainType.private then
         ErrorCallPrivate(cls, k)
     end
 end
 
+--经过了一层index/newindex代理，获取调动环境的层级为3
 local function CheckDomain(k, cls, member)
-    -- print("\t\t\t访问:  ", cls.__name, k)
-    -- if k == "PrintStartLine" then
-    --     local _, inst = debug.getlocal(2, 1)
-    --     if inst.__name == member.c.__name then
-    --         return true
-    --     end
-    -- end
-    -- local _, inst = debug.getlocal(4, 1)
-    -- local domain = member.d
-    -- if not IsTable(inst) then
-    --     AllowPublic(domain, cls, k)
-    -- else
-    --     local _, inst = debug.getlocal(3, 1)---1,1是自身语句，2,1是当前方法，3,1是当前文件，4,1是外部类
-    --     -- print("")
-    --     -- print("--------",GetInstClassName(inst), GetClassName(cls))
-    --     if not IsTheClass(inst, cls) then
-    --         -- print("--------",GetInstClassName(inst), GetClassName(cls))
-    --         if IsInstSuperClass(inst, cls) then
-    --             DisablePrivate(domain, cls, k)
-    --         else
-    --             AllowPublic(domain, cls, k)
-    --         end
-    --     end
-    -- end
+    local name, inst = debug.getlocal(3, 1)
+    local domain = member.d
+    if not IsTable(inst) then
+        AllowPublic(domain, cls, k)
+    else
+        if IsTheClass(inst, cls) then
+            -- print("当前类，什么访问域，都可以访问："..k)
+        else
+            if IsInstSuperClass(inst, cls) then
+                DisablePrivate(domain, cls, k)
+            else
+                AllowPublic(domain, cls, k)
+            end
+        end
+    end
     return true
 end
 
