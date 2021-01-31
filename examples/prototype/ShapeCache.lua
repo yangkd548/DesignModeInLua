@@ -24,6 +24,10 @@ end
 
 function _M.static:CacheShape(shape)
     self.shapeMap[shape.id] = shape
+    print(string.format("\n%s", shape.type))
+    for i, v in pairs(shape) do
+        print(i, v)
+    end
 end
 
 return _M
