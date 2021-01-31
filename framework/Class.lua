@@ -37,7 +37,7 @@ end
 local AllCls = {}
 local SingleInsts = {}
 local function GetShellClass(shell)
-    return AllCls[shell and shell.__name or nil]
+    return shell and AllCls[shell]
 end
 --增加Readonly，无法用于元表查找
 local OOP_MT_NAMES = {inst = "OOP_inst", module = "OOP_module", class = "OOP_class", super = "OOP_super", member = "OOP_member"}
@@ -69,7 +69,7 @@ end
 
 local function GetInstClass(inst)
     local shell = rawget(inst, "class")
-    return shell and GetShellClass(shell) or inst
+    return GetShellClass(shell) or inst
 end
 local function GetClassName(cls)
     return cls and cls.__name or ""
@@ -88,9 +88,6 @@ local function ErrorClassSuperType(name, type, level)
 end
 local function ErrorNoSuperCls(name, superName, level)
     error(string.format("The super class (%s) of the class (%s) you define is not exist!", superName or "nil", name), level or 3)
-end
-local function ErrorRepeatClass(__name, level)
-    error(string.format("The class '%s' is already defined!", __name), level or 3)
 end
 
 --实例化 相关
@@ -525,6 +522,7 @@ local function CreateClassShell(cls)
             __metatable = OOP_MT_NAMES.module
         })
         cls.__shell = shell
+        AllCls[shell] = cls
         return shell
     end
 end
@@ -592,9 +590,7 @@ local function SetClassProperties(cls, name, createFunc, type)
     cls.__type = OOP_MT_NAMES.class
     cls.__metatable = OOP_MT_NAMES.class
     cls.ctor = {c = cls, v = NullFunc}
-    -- cls.dtor = DoSetMemberValue(cls, "ctor", {}, NullFunc)
     SetNewFunc(cls, createFunc)
-    AllCls[name] = cls
 end
 --@endregion
 
@@ -653,7 +649,7 @@ local function GetFuncProxy(t, k, member)
         end
     end
 end
---@TODO 需要实现拷贝（具体是深拷贝，还是浅拷贝，需要进一步分析）
+--@TODO 需要实现拷贝（具体是深拷贝，还是浅拷贝，需要进一步分析；暂时使用浅拷贝）
 local function CopyValue(val)
     if type(val) == "table" then
         local copy = {}
@@ -777,16 +773,10 @@ end
 
 --@region OPP Entry
 function Class(name, super)
-    if AllCls[name] ~= nil then
-        ErrorRepeatClass(name)
-    end
-
     if super then
         local superType = type(super)
         if not IsFunction(super) and not IsTable(super) then
             ErrorClassSuperType(name, superType)
-            --     superType = nil
-            --     super = nil
         end
     end
 
@@ -806,7 +796,6 @@ function Class(name, super)
         cls.super = isTable and super or Null
         SetClassProperties(cls, name, CreateC, 1)
     else
-        --Shell用AllCls找到真实cls
         local superCls = GetShellClass(super)
         if super and superCls == nil then
             ErrorNoSuperCls(name, super.__name)

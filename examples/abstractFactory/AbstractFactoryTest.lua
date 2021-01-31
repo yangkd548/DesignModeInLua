@@ -3,7 +3,7 @@
     author:DylanYang
     time:2021-01-28 15:14:57
 ]]
-local ShapeFactory = require("examples.abstractFactory.ShapeFactory2")
+local ShapeFactory = require("examples.abstractFactory.ShapeFactory")
 local ColorFactory = require("examples.abstractFactory.ColorFactory")
 local FactoryProducer = require("examples.abstractFactory.FactoryProducer")
 
