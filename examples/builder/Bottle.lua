@@ -7,7 +7,7 @@ local super = require("examples.builder.Packing")
 local _M = Class("Bottle", super)
 
 function _M.public:Pack()
-    return "Bottle";
+    return "Bottle"
 end
 
 return _M

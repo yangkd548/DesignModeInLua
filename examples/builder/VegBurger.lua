@@ -7,11 +7,11 @@ local super = require("examples.builder.Burger")
 local _M = Class("VegBurger", super)
 
 function _M.public.get:price()
-    return 25.0;
+    return 25.0
 end
 
 function _M.public.get:name()
-    return "Veg Burger";
+    return "Veg Burger"
 end
 
 return _M

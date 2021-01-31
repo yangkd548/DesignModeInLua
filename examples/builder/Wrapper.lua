@@ -7,7 +7,7 @@ local super = require("examples.builder.Packing")
 local _M = Class("Wrapper", super)
 
 function _M.public:Pack()
-    return "Wrapper";
+    return "Wrapper"
 end
 
 return _M

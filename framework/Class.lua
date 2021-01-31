@@ -35,7 +35,6 @@ end
 
 --@region OOP base
 local AllCls = {}
-local SingleInsts = {}
 local function GetShellClass(shell)
     return shell and AllCls[shell]
 end
@@ -562,22 +561,21 @@ local function CreateLua(cls, ...)
     return ExecCtor(inst, cls, ...)
 end
 
+local SingleInsts = {}
 local function CreateSingle(cls)
     function cls.get:singleton()
-        return SingleInsts[cls.__name]
+        return SingleInsts[cls]
     end
 end
-
 local function SetNewFunc(cls, createFunc)
     --单例类的实例化，也是使用new，再次new不会创建新的实例，此后可以使用 class.singleton 获取了
     cls.new = function(...)
         if cls.singleton then
-            local name = cls.__name
-            if not SingleInsts[name] then
-                SingleInsts[name] = createFunc(cls, ...)
+            if not SingleInsts[cls] then
+                SingleInsts[cls] = createFunc(cls, ...)
                 CreateSingle(cls)
             end
-            return SingleInsts[name]
+            return SingleInsts[cls]
         else
             return createFunc(cls, ...)
         end
@@ -616,21 +614,21 @@ end
 
 --经过了一层index/newindex代理，获取调动环境的层级为3
 local function CheckDomain(k, cls, member)
-    local name, inst = debug.getlocal(3, 1)
-    local domain = member.d
-    if not IsTable(inst) then
-        AllowPublic(domain, cls, k)
-    else
-        if IsTheClass(inst, cls) then
-            -- print("当前类，什么访问域，都可以访问："..k)
-        else
-            if IsInstSuperClass(inst, cls) then
-                DisablePrivate(domain, cls, k)
-            else
-                AllowPublic(domain, cls, k)
-            end
-        end
-    end
+    -- local _, inst = debug.getlocal(3, 1)
+    -- local domain = member.d
+    -- if not IsTable(inst) then
+    --     AllowPublic(domain, cls, k)
+    -- else
+    --     if IsTheClass(inst, cls) then
+    --         -- print("当前类，什么访问域，都可以访问："..k)
+    --     else
+    --         if IsInstSuperClass(inst, cls) then
+    --             DisablePrivate(domain, cls, k)
+    --         else
+    --             AllowPublic(domain, cls, k)
+    --         end
+    --     end
+    -- end
     return true
 end
 
