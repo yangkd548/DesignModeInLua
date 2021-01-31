@@ -8,16 +8,17 @@ local _M = Class("Shape", interface)
 _M.abstract = true
 local public = _M.public
 
+_M._id = nil
+_M.protected._type = nil
+
 function _M:ctor(id)
     self._id = id
 end
 
-_M._id = nil
 function public.get:id()
     return self._id
 end
 
-_M.protected._type = nil
 function public.get:type()
     return self._type
 end
