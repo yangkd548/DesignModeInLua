@@ -311,7 +311,8 @@ local function ChangeClass(inst, cls, newCls)
     setmetatable(inst, newCls)
     cls.__metatable = OOP_MT_NAMES.class
 end
--- local SuperFuncFormat = "return function(inst, func, args) return func(inst, unpack(args)) end"
+--使用原方法名，方便调试
+-- local SuperFuncFormat = "return function(inst, func, args) local %s = func return %s(inst, unpack(args)) end"
 local function GetSuperFuncProxy(proxy, inst, cls, super, k)
     local member = super[k]
     local func = member.v
@@ -323,7 +324,7 @@ local function GetSuperFuncProxy(proxy, inst, cls, super, k)
         if args[1] == proxy then
             ChangeClass(inst, cls, super)
             table.remove(args, 1)
-            -- local tempFunc = loadstring(SuperFuncFormat)
+            -- local tempFunc = loadstring(string.format(SuperFuncFormat, k, k))
             -- tempFunc()(inst, func, args)
             func(inst, unpack(args))
             ChangeClass(inst, super, cls)
@@ -633,13 +634,14 @@ local function CheckDomain(k, cls, member)
 end
 
 --@desc 所有的方法执行，都应进行返回值的传递处理
--- local FuncFormat = "return function(t, func, args) return func(unpack(args)) end"
+--使用原方法名，方便调试
+-- local FuncFormat = "return function(t, func, args) local %s = func return %s(unpack(args)) end"
 local function GetFuncProxy(t, k, member)
     return function(...)
         local args = {...}
         if args[1] or args[1] == t then
-            -- local tempFunc = loadstring(FuncFormat)
-            --@desc 所有的方法执行，都应进行返回值的传递处理
+            -- @desc 所有的方法执行，都应进行返回值的传递处理
+            -- local tempFunc = loadstring(string.format(FuncFormat, k, k))
             -- return tempFunc()(t, member.v, args)
             return member.v(unpack(args))
         else
