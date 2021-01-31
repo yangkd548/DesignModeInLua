@@ -8,29 +8,29 @@ require("framework.Bit")
 require("framework.BaseExtend")
 require("framework.TableExtend")
 
-function Import(moduleName, currentModuleName)
-    local currentModuleNameParts
-    local moduleFullName = moduleName
+function Import(moduleName, curName)
+    local nameParts
+    local fullName = moduleName
     local offset = 1
     while true do
         if string.byte(moduleName, offset) ~= 46 then -- .
-            moduleFullName = string.sub(moduleName, offset)
-            if currentModuleNameParts and #currentModuleNameParts > 0 then
-                moduleFullName = table.concat(currentModuleNameParts, ".") .. "." .. moduleFullName
+            fullName = string.sub(moduleName, offset)
+            if nameParts and #nameParts > 0 then
+                fullName = table.concat(nameParts, ".") .. "." .. fullName
             end
             break
         end
         offset = offset + 1
-        if not currentModuleNameParts then
-            if not currentModuleName then
+        if not nameParts then
+            if not curName then
                 local n, v = debug.getlocal(3, 1)
-                currentModuleName = v
+                curName = v
             end
-            currentModuleNameParts = string.split(currentModuleName, ".")
+            nameParts = string.split(curName, ".")
         end
-        table.remove(currentModuleNameParts, #currentModuleNameParts)
+        table.remove(nameParts, #nameParts)
     end
-    return require(moduleFullName)
+    return require(fullName)
 end
 
 --@region OOP base
