@@ -477,7 +477,6 @@ local function CreateClassShell(cls)
     if rawget(cls, "__readonly") then
         RepeatReadOnly()
     else
-        --临时增加，调试字段：__type__temp
         local shell = setmetatable({__type = OOP_MT_NAMES.module}, {
             __index = function(t, k)
                 if k == "new" then
@@ -654,6 +653,18 @@ local function GetFuncProxy(t, k, member)
         end
     end
 end
+--@TODO 需要实现拷贝（具体是深拷贝，还是浅拷贝，需要进一步分析）
+local function CopyValue(val)
+    if type(val) == "table" then
+        local copy = {}
+        for i, v in pairs(val) do
+            copy[i] = v
+        end
+        return copy
+    else
+        return val
+    end
+end
 --实现运行阶段，实现OOP
 local function RealizeInstanceOOP(cls)
     --调用阶段（使用self或外部实例调用）
@@ -685,7 +696,14 @@ local function RealizeInstanceOOP(cls)
                         if IsFunction(member.v) then
                             return GetFuncProxy(t, k, member)
                         else
-                            return GetFilterNull(rawget(t, k) or member.v)
+                            local v = rawget(t, k)
+                            if v == nil then
+                                if member.s == StorageType.default and member.t == MemberType.default then
+                                --只有非static、default的变量，需要拷贝
+                                    rawset(t, k, CopyValue(member.v))
+                                end
+                            end
+                            return v or rawget(t, k) or member.v
                         end
                     end
                 end
