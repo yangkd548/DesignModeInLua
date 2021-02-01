@@ -326,6 +326,7 @@ local function GetSuperFuncProxy(proxy, inst, cls, super, k)
             table.remove(args, 1)
             -- local tempFunc = loadstring(string.format(SuperFuncFormat, k, k))
             -- tempFunc()(inst, func, args)
+            --将self.super:Fucntion的访问格式，转换为SuperFunction(self, ...)的形式[其实是一个语法糖]
             func(inst, unpack(args))
             ChangeClass(inst, super, cls)
         else
@@ -620,6 +621,7 @@ local function CheckDomain(k, cls, member)
     if not IsTable(inst) then
         AllowPublic(domain, cls, k)
     else
+        print(inst.__name, inst.class, cls.__name)
         if IsTheClass(inst, cls) then
             -- print("当前类，什么访问域，都可以访问："..k)
         else
@@ -633,23 +635,20 @@ local function CheckDomain(k, cls, member)
     return true
 end
 
---@desc 所有的方法执行，都应进行返回值的传递处理
---使用原方法名，方便调试
--- local FuncFormat = "return function(t, func, args) local %s = func return %s(unpack(args)) end"
 local function GetFuncProxy(t, k, member)
     return function(...)
         local args = {...}
         if args[1] or args[1] == t then
-            -- @desc 所有的方法执行，都应进行返回值的传递处理
-            -- local tempFunc = loadstring(string.format(FuncFormat, k, k))
-            -- return tempFunc()(t, member.v, args)
+            --这里，仅用于，检测使用“:”(冒号)访问function
+            --方法的执行，都需要return返回其返回值
+            --参数数组args，包含了t，位置是第一个
             return member.v(unpack(args))
         else
             ErrorDotAttemptFunc(k)
         end
     end
 end
---@TODO 需要实现拷贝（具体是深拷贝，还是浅拷贝，需要进一步分析；暂时使用浅拷贝）
+--暂时使用“浅拷贝”，现在看，是满足需求的
 local function CopyValue(val)
     if type(val) == "table" then
         local copy = {}
@@ -748,7 +747,10 @@ end
 --@endregion
 
 function IsTheClass(inst, cls)
-    return GetInstClass(inst).__name == cls.__name
+    if inst.__name == cls.__name then
+        print("判断是否是当前类：", GetShellClass(inst.class) == cls)
+    end
+    return inst.__name == cls.__name
 end
 
 function IsInstSuperClass(inst, class)
