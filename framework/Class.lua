@@ -39,7 +39,7 @@ local function GetShellClass(shell)
     return shell and AllCls[shell]
 end
 --增加Readonly，无法用于元表查找
-local OOP_MT_NAMES = {inst = "OOP_inst", module = "OOP_module", class = "OOP_class", super = "OOP_super", member = "OOP_member"}
+local OOP_MT_NAMES = {inst = "OOP_inst", shell = "OOP_module", class = "OOP_class", super = "OOP_super", member = "OOP_member"}
 local Null = {__name = "Null"}
 local NullFunc = function()
 end
@@ -162,7 +162,7 @@ local function ErrorAttemptCtor(cls, k, level)
     error(string.format("Class ctor method cannot be called outside (%s).", GetIndexInfo(cls, k)), level or 3)
 end
 local function ErrorAttemptSuper(cls, level)
-    error(string.format("Access Super directly using 'self.super', not module (%s).", GetClassName(cls)), level or 3)
+    error(string.format("Access Super directly using 'self.super', not shell (%s).", GetClassName(cls)), level or 3)
 end
 local function ErrorAttemptClassCtor(cls, level)
     error(string.format("Error: Accessing the 'ctor' mothed of the super class of '%s', the first argument is not 'self'(object of cur class)!", GetClassName(cls)), level or 3)
@@ -306,10 +306,12 @@ local function GetCurFuncCls(cls, k, func)
     end
     ErrorNoExist(cur, k)
 end
-local function ChangeClass(inst, cls, newCls)
-    cls.__metatable = nil
-    setmetatable(inst, newCls)
-    cls.__metatable = OOP_MT_NAMES.class
+--@desc 为了外部子类调用父类的方法？？？？
+local function ChangeShell(inst, cls)
+    inst.__metatable = nil
+    --普通对外叫class，内部叫__shell
+    inst.class = cls.__shell
+    inst.__metatable = OOP_MT_NAMES.inst
 end
 --使用原方法名，方便调试
 -- local SuperFuncFormat = "return function(inst, func, args) local %s = func return %s(inst, unpack(args)) end"
@@ -321,20 +323,24 @@ local function GetSuperFuncProxy(proxy, inst, cls, super, k)
     end
     return function(...)
         local args = {...}
+        --如果是self.super访问member，则使用inst访问，同时将inst的shell改为super的shell
         if args[1] == proxy then
-            ChangeClass(inst, cls, super)
+            ChangeShell(inst, super)
+            --将self.super:Fucntion的访问格式，转换为SuperFunction(self, ...)的形式[其实是一个语法糖]
+            -- 去除原来的super，使用转换过shell的inst
             table.remove(args, 1)
+            func(inst, unpack(args))
             -- local tempFunc = loadstring(string.format(SuperFuncFormat, k, k))
             -- tempFunc()(inst, func, args)
-            --将self.super:Fucntion的访问格式，转换为SuperFunction(self, ...)的形式[其实是一个语法糖]
-            func(inst, unpack(args))
-            ChangeClass(inst, super, cls)
+            --@desc 出栈，回到inst原有的环境，恢复shell
+            ChangeShell(inst, cls)
         else
             ErrorDotAttemptFunc(k)
         end
     end
 end
 local function GetSuperCtorProxy(fromK, k, t, inst, cls, cur, super)
+    --@desc 对于子类访问父类的ctor方法，限制必须在自己的ctor中
     if fromK == k then
         return GetSuperFuncProxy(t, inst, cls, super, k)
     else
@@ -342,8 +348,8 @@ local function GetSuperCtorProxy(fromK, k, t, inst, cls, cur, super)
     end
 end
 local function GetSuperMemberProxy(fromK, k, t, inst, cls, cur, super)
-    --@TODO首先找到k所在的class
     local member = super[k]
+    --@desc 对于访问super的private方法，这里做了限制，不再需要CheckDomain限制
     if member.d == DomainType.private then
         ErrorCallPrivate(cls, k, 4)
     else
@@ -475,7 +481,7 @@ local function CreateClassShell(cls)
     if rawget(cls, "__readonly") then
         RepeatReadOnly()
     else
-        local shell = setmetatable({__type = OOP_MT_NAMES.module}, {
+        local shell = setmetatable({__type = OOP_MT_NAMES.shell}, {
             __index = function(t, k)
                 if k == "new" then
                     return cls.new
@@ -520,7 +526,7 @@ local function CreateClassShell(cls)
             __len = function()
                 return table.len(cls)
             end,
-            __metatable = OOP_MT_NAMES.module
+            __metatable = OOP_MT_NAMES.shell
         })
         cls.__shell = shell
         AllCls[shell] = cls
@@ -616,13 +622,23 @@ end
 
 --经过了一层index/newindex代理，获取调动环境的层级为3
 local function CheckDomain(k, cls, member)
+    local curCls = member.c
     local _, inst = debug.getlocal(3, 1)
     local domain = member.d
     if not IsTable(inst) then
         AllowPublic(domain, cls, k)
     else
-        print(inst.__name, inst.class, cls.__name)
-        if IsTheClass(inst, cls) then
+        --cls==Circle, member.c==Shape, Circle是Shape的子类
+        --如果inst是member.c的实例，则可以访问所有
+        --是cls类的对象inst，发起的访问
+        --访问的是member.c的私有方法count
+        --是在member.c的ctor方法中进行访问的
+            --如何找到当前ctor方法的envMember
+            --其envMember.c与member。c是相对的cls，这样所有的访问域，都可以通过校验
+            local domainStr = GetKeyByValue(DomainType, domain) or "private"
+            local type = getmetatable(inst)
+        print("-------------------------------", inst.__name == curCls.__name, inst.__name, curCls.__name, type, "键值："..k, "访问域："..domainStr)
+        if IsTheClass(inst, curCls) then
             -- print("当前类，什么访问域，都可以访问："..k)
         else
             if IsInstSuperClass(inst, cls) then
@@ -747,10 +763,10 @@ end
 --@endregion
 
 function IsTheClass(inst, cls)
-    if inst.__name == cls.__name then
-        print("判断是否是当前类：", GetShellClass(inst.class) == cls)
-    end
-    return inst.__name == cls.__name
+    print("---")
+    print(GetShellClass(inst.class).__name)
+    print(cls.__name)
+    return GetShellClass(inst.class) == cls
 end
 
 function IsInstSuperClass(inst, class)
