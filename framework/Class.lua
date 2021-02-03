@@ -324,10 +324,10 @@ end
 --使用loadstring为的是，元方法index获取的k为对应的k
 local FuncFormat = "return function(inst, func, ...) local %s = func return %s(inst, ...) end"
 local function ExecFormatFunction(inst, member, ...)
-    print(string.format("\n*********进入方法%s*************", GetIndexInfo(inst, member.n)))
+    print(string.format("\n\t\t<<<<<<<<<<<<<<<进入方法%s>>>>>>>>>>>>>", GetIndexInfo(inst, member.n)))
     local temp = loadstring(string.format(FuncFormat, member.n, member.n))
     local result = temp()(inst, member.v, ...)
-    print(string.format(".........Leave方法%s............\n", GetIndexInfo(inst, member.n)))
+    print(string.format("\t\t--------------Leave方法%s---------------\n\n", GetIndexInfo(inst, member.n)))
     return result
 end
 local function ExecMemberFunc(member, inst, cls, ...)
@@ -341,16 +341,36 @@ local function ExecMemberFunc(member, inst, cls, ...)
     end
     return result
 end
+--获取“:”(冒号)访问的代理方法
+local function GetColonProxy(t, k, func)
+    return function(...)
+        print("进行“:”(冒号)访问的判定：", k)
+        local args = {...}
+        if args[1] and args[1] == t then
+            return func(...)
+        else
+            ErrorDotAttemptFunc(k)
+        end
+    end
+end
+--self:Function==>转换为self:SuperFunction（父类方法访问域：public和private）
+local function GetSuperFunctionProxy(t, k, member, cls)
+    return GetColonProxy(t, k, 
+        function(...) 
+            return ExecMemberFunc(member, t, cls, ...) 
+        end
+    )
+end
 --self.super:Function==>转换为self:SuperFuntion
 local function GetSuperFuncProxy(t, inst, cls, member)
     return function(...)
-        local result
         local args = {...}
-        if args[1] == t then
-            table.remove(args, 1)
-            result = ExecMemberFunc(member, inst, cls, unpack(args))
-        end
-        return result
+        return GetColonProxy(t, member.n,
+            function()
+                table.remove(args, 1)
+                return ExecMemberFunc(member, inst, cls, unpack(args))
+            end
+        )
     end
 end
 local function GetSuperCtorProxy(fromK, k, t, inst, cls, cur, member)
@@ -651,10 +671,7 @@ local function CheckDomain(k, cls, member)
             --其envMember.c与member。c是相对的cls，这样所有的访问域，都可以通过校验
             local domainStr = GetKeyByValue(DomainType, domain) or "private"
             local type = getmetatable(inst)
-        print("-------------------------------", inst.__name == curCls.__name, inst.__name, curCls.__name, type, "键值："..k, "访问域："..domainStr)
-        -- if k == "PrintStartLine" then
-        --     print("aaaa")
-        -- end
+        -- print("-------------------------------", inst.__name == curCls.__name, inst.__name, curCls.__name, type, "键值："..k, "访问域："..domainStr)
         print("检查访问域:", GetIndexInfo(cls, k))
         if IsSameClass(inst, curCls, k) then
             print("是当前类的方法，无访问域限制：", k)
@@ -669,25 +686,6 @@ local function CheckDomain(k, cls, member)
         end
     end
     return true
-end
---获取“:”(冒号)访问的代理方法
-local function GetColonProxy(t, k, func)
-    return function(...)
-        local args = {...}
-        if args[1] or args[1] == t then
-            return func(...)
-        else
-            ErrorDotAttemptFunc(k)
-        end
-    end
-end
---self:Function==>转换为self:SuperFunction（父类方法访问域：public和private）
-local function GetSuperFunctionProxy(t, k, member, cls)
-    return GetColonProxy(t, k, 
-        function(...) 
-            return ExecMemberFunc(member, t, cls, ...) 
-        end
-    )
 end
 --暂时使用“浅拷贝”，现在看，是满足需求的
 local function CopyValue(val)
@@ -796,14 +794,6 @@ end
 --@endregion
 
 function IsSameClass(inst, cls, k)
-    -- local shell = inst.class
-    -- local tarCls = GetShellClass(shell)
-    -- if k == "PrintStartLine" then
-    --     print("0000:", cls == tarCls)
-    --     print("aaaa:", "000:", inst,        "111:", shell,        "222:", cls,        "444:",tarCls)
-    --     print("bbbb:", "000:", inst.__type, "111:", shell.__type, "222:", cls.__type, "444:", tarCls.__type)
-    --     print("cccc:", "000:", inst.__name, "111:", shell.__name, "222:", cls.__name, "444:", tarCls.__name)
-    -- end
     return GetShellClass(inst.class) == cls
 end
 
