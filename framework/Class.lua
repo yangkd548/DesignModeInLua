@@ -38,8 +38,11 @@ local AllCls = {}
 local function GetShellClass(shell)
     return shell and AllCls[shell]
 end
---增加Readonly，无法用于元表查找
-local OOP_MT_NAMES = {inst = "OOP_inst", shell = "OOP_module", class = "OOP_class", super = "OOP_super", member = "OOP_member"}
+--下面是代理table的类型（super用于代理self.super:SuperFunc的代码）
+local OOP_MT_TYPES = {inst = "OOP_inst", shell = "OOP_shell", class = "OOP_class", super = "OOP_super", member = "OOP_member"}
+local OOP_MT_NAME = "__metatable"
+local OOP_CLS_NAME = "class"
+--@TODO 为所有的表，设置__type的目的是什么，考虑优化掉！！！
 local Null = {__name = "Null"}
 local NullFunc = function()
 end
@@ -55,7 +58,7 @@ local DomainType =  {private = nil, public = 1, protected = 2}    ----访问域�
 local ReadType =  {default = nil, readonly = 1}  ---------------------仅对MemberType中default起作用
 local MemberType =  {default = nil, set = 1, get = 2} ----------------成员类型，default包含function、variable
 
-local MemberProperties = {domain = "d", readonly = "r", static = "s", type = "t", value = "v"}
+local MemberProperties = {domain = "d", readonly = "r", static = "s", type = "t", value = "v", name = "n"}
 local MemberPropertieTypes = {d = DomainType, r = ReadType, s = StorageType, t = MemberType}
 
 local function GetKeyByValue(tbl, value)
@@ -67,7 +70,7 @@ local function GetKeyByValue(tbl, value)
 end
 
 local function GetInstClass(inst)
-    local shell = rawget(inst, "class")
+    local shell = rawget(inst, OOP_CLS_NAME)
     return GetShellClass(shell) or inst
 end
 local function GetClassName(cls)
@@ -178,6 +181,7 @@ local function ErrorAttemptSuperVar(cls, k, level)
 end
 
 --方法访问 相关
+--@TODO 此方法的调用，考虑汇总到统一位置调用
 local function ErrorDotAttemptFunc(k, level)--限制只能用“:”(冒号)访问function
     error(string.format("Please use ':' access method (%s).", k), level or 3)
 end
@@ -197,6 +201,7 @@ end
 local function DoSetMemberValue(cls, k, member, v)
     member.v = SetFilterNil(v)
     member.c = cls
+    member.n = k
     rawset(cls, k, member)
 end
 local function SetMemberValue(cls, k, member, v)
@@ -227,7 +232,8 @@ local ModifyKeyProperty = {
     public = MemberProperties.domain, protected = MemberProperties.domain, private = MemberProperties.domain,
     static = MemberProperties.static,
     readonly = MemberProperties.readonly,
-    set = MemberProperties.type, get = MemberProperties.type
+    set = MemberProperties.type, get = MemberProperties.type,
+    name = MemberProperties.name
 }
 local function IsModifyWord(key)
     return ModifyKeyFunc[key] ~= nil or false
@@ -306,54 +312,53 @@ local function GetCurFuncCls(cls, k, func)
     end
     ErrorNoExist(cur, k)
 end
---@desc 为了外部子类调用父类的方法？？？？
-local function ChangeShell(inst, cls)
-    inst.__metatable = nil
-    --普通对外叫class，内部叫__shell
-    inst.class = cls.__shell
-    inst.__metatable = OOP_MT_NAMES.inst
+local function ChangeClass(inst, cls, newCls)
+    --修改shell（普通对外叫class，内部叫__shell）
+    rawset(inst, OOP_CLS_NAME, newCls.__shell)
+    --先关闭当前cls的mt，修改完后，再恢复
+    rawset(cls, "__metatable", nil)
+    setmetatable(inst, newCls)
+    rawset(cls, "__metatable", OOP_MT_TYPES.class)
 end
 --使用原方法名，方便调试
--- local SuperFuncFormat = "return function(inst, func, args) local %s = func return %s(inst, unpack(args)) end"
-local function GetSuperFuncProxy(proxy, inst, cls, super, k)
-    local member = super[k]
-    local func = member.v
-    if member.t == nil and not IsFunction(func) then
-        ErrorAttemptSuperVar(super, k)
+--使用loadstring为的是，元方法index获取的k为对应的k
+local FuncFormat = "return function(inst, func, ...) local %s = func return %s(inst, ...) end"
+local function ExecFormatFunction(inst, member, ...)
+    print(string.format("\n*********进入方法%s*************", GetIndexInfo(inst, member.n)))
+    local temp = loadstring(string.format(FuncFormat, member.n, member.n))
+    local result = temp()(inst, member.v, ...)
+    print(string.format(".........Leave方法%s............\n", GetIndexInfo(inst, member.n)))
+    return result
+end
+local function ExecMemberFunc(member, inst, cls, ...)
+    local result
+    if member.c ~= cls then
+        ChangeClass(inst, cls, member.c)
+        result = ExecFormatFunction(inst, member, ...)
+        ChangeClass(inst, member.c, cls)
+    else
+        result = ExecFormatFunction(inst, member, ...)
     end
+    return result
+end
+--self.super:Function==>转换为self:SuperFuntion
+local function GetSuperFuncProxy(t, inst, cls, member)
     return function(...)
+        local result
         local args = {...}
-        --如果是self.super访问member，则使用inst访问，同时将inst的shell改为super的shell
-        if args[1] == proxy then
-            ChangeShell(inst, super)
-            --将self.super:Fucntion的访问格式，转换为SuperFunction(self, ...)的形式[其实是一个语法糖]
-            -- 去除原来的super，使用转换过shell的inst
+        if args[1] == t then
             table.remove(args, 1)
-            func(inst, unpack(args))
-            -- local tempFunc = loadstring(string.format(SuperFuncFormat, k, k))
-            -- tempFunc()(inst, func, args)
-            --@desc 出栈，回到inst原有的环境，恢复shell
-            ChangeShell(inst, cls)
-        else
-            ErrorDotAttemptFunc(k)
+            result = ExecMemberFunc(member, inst, cls, unpack(args))
         end
+        return result
     end
 end
-local function GetSuperCtorProxy(fromK, k, t, inst, cls, cur, super)
+local function GetSuperCtorProxy(fromK, k, t, inst, cls, cur, member)
     --@desc 对于子类访问父类的ctor方法，限制必须在自己的ctor中
     if fromK == k then
-        return GetSuperFuncProxy(t, inst, cls, super, k)
+        return GetSuperFuncProxy(t, inst, cls, member)
     else
         ErrorAttemptCtor(cur, k)
-    end
-end
-local function GetSuperMemberProxy(fromK, k, t, inst, cls, cur, super)
-    local member = super[k]
-    --@desc 对于访问super的private方法，这里做了限制，不再需要CheckDomain限制
-    if member.d == DomainType.private then
-        ErrorCallPrivate(cls, k, 4)
-    else
-        return GetSuperFuncProxy(t, inst, cls, super, k)
     end
 end
 local function GetNorFuncSuper(cls, k)
@@ -373,22 +378,31 @@ local function GetFuncSuper(cls, k)
         return GetNorFuncSuper(cls, k)
     end
 end
+--统一的self.super调用
 local function CreateSuperProxy(inst, cls, fromK, func)
     local cur = GetCurFuncCls(cls, fromK, func)
     local super = GetFuncSuper(cur, fromK)
-    return setmetatable({__type = OOP_MT_NAMES.super}, {
+    return setmetatable({__type = OOP_MT_TYPES.super}, {
         __index = function(t, k)
+            --如果通过self.super.XXX访问的是非方法，则报错提示
+            --@TODO 考虑是否提取到“设置代理”的外部
+            local member = super[k]
+            if member.t == nil and not IsFunction(member.v) then
+                ErrorAttemptSuperVar(super, k)
+            end
             --如果当前是方法，则自动赋值第一个参数是????????
             if k == "ctor" then
-                return GetSuperCtorProxy(fromK, k, t, inst, cls, cur, super)
+                return GetSuperCtorProxy(fromK, k, t, inst, cls, cur, member)
             else
-                return GetSuperMemberProxy(fromK, k, t, inst, cls, cur, super)
+                print("进入self.super代理首层:", GetIndexInfo(cls, k))
+                --@TODO 考虑这里是否需要做“访问域”判定
+                return GetSuperFuncProxy(t, inst, cls, member)
             end
         end,
         __newindex = function(t, k)
             ErrorAssignSuperMember(cur, super, k)
         end,
-        __metatable = OOP_MT_NAMES.super
+        __metatable = OOP_MT_TYPES.super
     })
 end
 
@@ -456,14 +470,14 @@ local function GetMember(cls, k, member)
         else
             member = CopyMember(member)
             addPropertyFunc(member, k)
-            return setmetatable({__type = OOP_MT_NAMES.member}, {
+            return setmetatable({__type = OOP_MT_TYPES.member}, {
                 __index = function(t, k)
                     return GetMember(cls, k, member)
                 end,
                 __newindex = function(t, k, v)
                     AddMember(cls, k, v, member)
                 end,
-                __metatable = OOP_MT_NAMES.member
+                __metatable = OOP_MT_TYPES.member
             })
         end
     else
@@ -481,7 +495,7 @@ local function CreateClassShell(cls)
     if rawget(cls, "__readonly") then
         RepeatReadOnly()
     else
-        local shell = setmetatable({__type = OOP_MT_NAMES.shell}, {
+        local shell = setmetatable({__type = OOP_MT_TYPES.shell}, {
             __index = function(t, k)
                 if k == "new" then
                     return cls.new
@@ -526,7 +540,7 @@ local function CreateClassShell(cls)
             __len = function()
                 return table.len(cls)
             end,
-            __metatable = OOP_MT_NAMES.shell
+            __metatable = OOP_MT_TYPES.shell
         })
         cls.__shell = shell
         AllCls[shell] = cls
@@ -544,11 +558,10 @@ end
 
 local function ExecCtor(inst, cls, ...)
     --面向inst的class是__shell(壳)
-    rawset(inst, "class", cls.__shell)
+    rawset(inst, OOP_CLS_NAME, cls.__shell)
     --这里的ctor不能改名，后续逻辑会用于判断
-    local ctorMember = GetNearCtor(cls)
-    local ctor = ctorMember.v
-    ctor(inst, ...)
+    local ctor = GetNearCtor(cls)
+    ExecMemberFunc(ctor, inst, cls, ...)
     return inst
 end
 
@@ -565,7 +578,7 @@ end
 local function CreateLua(cls, ...)
     CheckAbstract(cls)
     --为inst实例，设置元表，以便在运行阶段，实现OOP
-    local inst = setmetatable({__type = OOP_MT_NAMES.inst}, cls)
+    local inst = setmetatable({__type = OOP_MT_TYPES.inst}, cls)
     return ExecCtor(inst, cls, ...)
 end
 
@@ -593,8 +606,8 @@ end
 local function SetClassProperties(cls, name, createFunc, type)
     cls.__name = name
     cls.__ctype = type
-    cls.__type = OOP_MT_NAMES.class
-    cls.__metatable = OOP_MT_NAMES.class
+    cls.__type = OOP_MT_TYPES.class
+    cls.__metatable = OOP_MT_TYPES.class
     cls.ctor = {c = cls, v = NullFunc}
     SetNewFunc(cls, createFunc)
 end
@@ -614,9 +627,9 @@ local function AllowPublic(domain, cls, k)
 end
 
 --判定为子类访问，唯独不能访问private的访问域
-local function DisablePrivate(domain, cls, k)
+local function DisablePrivate(domain, cls, k, level)
     if domain == DomainType.private then
-        ErrorCallPrivate(cls, k)
+        ErrorCallPrivate(cls, k, level)
     end
 end
 
@@ -626,6 +639,7 @@ local function CheckDomain(k, cls, member)
     local _, inst = debug.getlocal(3, 1)
     local domain = member.d
     if not IsTable(inst) then
+        print("------------------******************************----特殊逻辑，待分析.....")
         AllowPublic(domain, cls, k)
     else
         --cls==Circle, member.c==Shape, Circle是Shape的子类
@@ -638,31 +652,42 @@ local function CheckDomain(k, cls, member)
             local domainStr = GetKeyByValue(DomainType, domain) or "private"
             local type = getmetatable(inst)
         print("-------------------------------", inst.__name == curCls.__name, inst.__name, curCls.__name, type, "键值："..k, "访问域："..domainStr)
-        if IsTheClass(inst, curCls) then
-            -- print("当前类，什么访问域，都可以访问："..k)
+        -- if k == "PrintStartLine" then
+        --     print("aaaa")
+        -- end
+        print("检查访问域:", GetIndexInfo(cls, k))
+        if IsSameClass(inst, curCls, k) then
+            print("是当前类的方法，无访问域限制：", k)
         else
             if IsInstSuperClass(inst, cls) then
                 DisablePrivate(domain, cls, k)
+                print("不是private方法，可以访问：", k)
             else
                 AllowPublic(domain, cls, k)
+                print("外部访问，public方法可以访问：", k)
             end
         end
     end
     return true
 end
-
-local function GetFuncProxy(t, k, member)
+--获取“:”(冒号)访问的代理方法
+local function GetColonProxy(t, k, func)
     return function(...)
         local args = {...}
         if args[1] or args[1] == t then
-            --这里，仅用于，检测使用“:”(冒号)访问function
-            --方法的执行，都需要return返回其返回值
-            --参数数组args，包含了t，位置是第一个
-            return member.v(unpack(args))
+            return func(...)
         else
             ErrorDotAttemptFunc(k)
         end
     end
+end
+--self:Function==>转换为self:SuperFunction（父类方法访问域：public和private）
+local function GetSuperFunctionProxy(t, k, member, cls)
+    return GetColonProxy(t, k, 
+        function(...) 
+            return ExecMemberFunc(member, t, cls, ...) 
+        end
+    )
 end
 --暂时使用“浅拷贝”，现在看，是满足需求的
 local function CopyValue(val)
@@ -703,14 +728,22 @@ local function RealizeInstanceOOP(cls)
                     elseif member.s == StorageType.static then
                         return GetStaticMemberValue(cls, k)
                     else
+                        local v = rawget(t, k)
                         local member = cls[k]
                         if IsFunction(member.v) then
-                            return GetFuncProxy(t, k, member)
+                            if v == nil then
+                                --前面已经使用了CheckDomain检查了访问域，这里就不用检查了
+                                print("设置执行“父类的默认方法”:", GetIndexInfo(cls, k))
+                                return GetSuperFunctionProxy(t, k, member, cls)
+                            else
+                                --访问自身的方法，不用走代理，只判断是否使用了“:”冒号
+                                return GetColonProxy(t, k, member.v)
+                            end
                         else
-                            local v = rawget(t, k)
                             if v == nil then
                                 if member.s == StorageType.default and member.t == MemberType.default then
-                                --只有非static、default的变量，需要拷贝
+                                    --只有非static、default的变量，需要拷贝
+                                    --super的方法，拷贝到子类，就失去了访问super的private成员的权限了，所有不能拷贝方法
                                     rawset(t, k, CopyValue(member.v))
                                 end
                             end
@@ -762,10 +795,15 @@ local function RealizeOOP(cls)
 end
 --@endregion
 
-function IsTheClass(inst, cls)
-    print("---")
-    print(GetShellClass(inst.class).__name)
-    print(cls.__name)
+function IsSameClass(inst, cls, k)
+    -- local shell = inst.class
+    -- local tarCls = GetShellClass(shell)
+    -- if k == "PrintStartLine" then
+    --     print("0000:", cls == tarCls)
+    --     print("aaaa:", "000:", inst,        "111:", shell,        "222:", cls,        "444:",tarCls)
+    --     print("bbbb:", "000:", inst.__type, "111:", shell.__type, "222:", cls.__type, "444:", tarCls.__type)
+    --     print("cccc:", "000:", inst.__name, "111:", shell.__name, "222:", cls.__name, "444:", tarCls.__name)
+    -- end
     return GetShellClass(inst.class) == cls
 end
 
