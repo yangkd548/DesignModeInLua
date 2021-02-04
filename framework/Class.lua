@@ -172,6 +172,7 @@ local ModifyKeyProperty = {
 --下面是代理table的类型（super用于代理self.super:SuperFunc的代码）
 local OOP_MT_TYPES = {inst = "OOP_inst", shell = "OOP_shell", class = "OOP_class", super = "OOP_super", member = "OOP_member"}
 local OOP_CLS_NAME = "class"
+local OOP_SHELL_NAME = "shell"
 --@TODO 为所有的表，设置__type的目的是什么，考虑优化掉！！！
 local Null = {__name = "Null"}
 local NullFunc = function()
@@ -219,12 +220,13 @@ end
 --由cls获取shell
 local function GetSuperCls(cls)
     local mt = getmetatable(cls)
+    --继承关系在Class方法中，设置了原表和原方法__index
     return mt and mt.__index or nil
 end
 
 -- --由cls获取shell
 local function GetShellOfClass(cls)
-    return cls.shell
+    return rawget(cls, OOP_SHELL_NAME)
 end
 
 -- --由Inst获取shell
@@ -232,24 +234,16 @@ local function GetShellOfInst(inst)
     return inst.class
 end
 
-function IsSameClass(inst, cls, k)
-    return GetClassOfShell(GetShellOfInst(inst)) == cls
+function IsSameEnvCls(cls, tarCls)
+    --先通过inst获取cls
+    return cls == tarCls
 end
 
-function IsInstOfSuper(inst, class)
-    if type(inst) ~= 'table' then
-        return false
-    end
-    local clsName = IsString(class) and class or class.__name
-    local cls = GetClassOfInst(inst)
+function IsExtendRelation(cls, tarCls)
     while cls do
-        local curName = cls.__name
-        if curName == clsName then
-            return true
-        end
         cls = GetSuperCls(cls)
-        if cls == nil then
-            return false
+        if cls == tarCls then
+            return true
         end
     end
     return false
@@ -378,9 +372,6 @@ end
 
 local function GetMember(cls, k, member)
     local addPropertyFunc = ModifyKeyFunc[k]
-    if k == "static" then
-        print("555")
-    end
     if addPropertyFunc then
         local mv = member and member[ModifyKeyProperty[k]]
         if mv ~= nil then
@@ -444,18 +435,16 @@ local function GetCurFuncCls(cls, k, func)
     ErrorNoExist(cur, k)
 end
 
-local function ChangeClass(inst, cls, newCls)
-    --修改shell（普通对外叫class，内部叫__shell）
-    rawset(inst, OOP_CLS_NAME, newCls.shell)
+--@endregion
+
+--@region exec function
+
+local function ChangeEnvCls(inst, cls, newCls)
     --先关闭当前cls的mt，修改完后，再恢复
     rawset(cls, "__metatable", nil)
     setmetatable(inst, newCls)
     rawset(cls, "__metatable", OOP_MT_TYPES.class)
 end
-
---@endregion
-
---@region exec function
 
 --使用原方法名，方便调试
 --使用loadstring为的是，元方法index获取的k为对应的k
@@ -471,9 +460,9 @@ end
 local function ExecMemberFunc(member, inst, cls, ...)
     local result
     if member.c ~= cls then
-        ChangeClass(inst, cls, member.c)
+        ChangeEnvCls(inst, cls, member.c)
         result = ExecFormatFunction(inst, member, ...)
-        ChangeClass(inst, member.c, cls)
+        ChangeEnvCls(inst, member.c, cls)
     else
         result = ExecFormatFunction(inst, member, ...)
     end
@@ -651,42 +640,26 @@ local function AllowPublic(domain, cls, k)
 end
 
 --判定为子类访问，唯独不能访问private的访问域
-local function DisablePrivate(domain, cls, k, level)
+local function DisablePrivate(domain, cls, k)
     if domain == DomainType.private then
-        ErrorCallPrivate(cls, k, level)
+        ErrorCallPrivate(cls, k)
     end
 end
 
 --经过了一层index/newindex代理，获取调动环境的层级为3
 local function CheckDomain(k, cls, member)
-    local curCls = member.c
-    local _, inst = debug.getlocal(3, 1)
-    local domain = member.d
-    if not IsTable(inst) then
-        print("------------------******************************----特殊逻辑，待分析.....")
-        AllowPublic(domain, cls, k)
+    local funcCls = member.c
+    print("检查访问域:", GetMemberFullName(cls, k))
+    if IsSameEnvCls(cls, funcCls) then
+        print("是当前类的方法，无访问域限制：", k)
     else
-        --cls==Circle, member.c==Shape, Circle是Shape的子类
-        --如果inst是member.c的实例，则可以访问所有
-        --是cls类的对象inst，发起的访问
-        --访问的是member.c的私有方法count
-        --是在member.c的ctor方法中进行访问的
-            --如何找到当前ctor方法的envMember
-            --其envMember.c与member。c是相对的cls，这样所有的访问域，都可以通过校验
-            local domainStr = GetKeyByValue(DomainType, domain) or "private"
-            local type = getmetatable(inst)
-        -- print("-------------------------------", inst.__name == curCls.__name, inst.__name, curCls.__name, type, "键值："..k, "访问域："..domainStr)
-        print("检查访问域:", GetMemberFullName(cls, k))
-        if IsSameClass(inst, curCls, k) then
-            print("是当前类的方法，无访问域限制：", k)
+        local domain = member.d
+        if IsExtendRelation(cls, funcCls) then
+            DisablePrivate(domain, funcCls, k)
+            print("不是private方法，可以访问：", k)
         else
-            if IsInstOfSuper(inst, cls) then
-                DisablePrivate(domain, cls, k)
-                print("不是private方法，可以访问：", k)
-            else
-                AllowPublic(domain, cls, k)
-                print("外部访问，public方法可以访问：", k)
-            end
+            AllowPublic(domain, funcCls, k)
+            print("外部访问，public方法可以访问：", k)
         end
     end
     return true
@@ -706,6 +679,7 @@ local function CopyValue(val)
 end
 
 --实例对象，访问成员的处理
+--@desc cls是内部的class，用于实例inst，“访问成员”（function、set、get、variable）
 local function CreateInstAccessor(cls)
     --调用阶段（使用self或外部实例调用）
     function cls.__index(t, k)
@@ -795,6 +769,7 @@ end
 --@region class creator
 
 --实现定义阶段，实现OOP
+--@desc shell是对外的class，用于shell向cls，“添加成员”（function、set、get、variable）
 local function CreateClassShell(cls)
     local shell = GetShellOfClass(cls)
     if shell == nil then
@@ -845,7 +820,8 @@ local function CreateClassShell(cls)
             end,
             __metatable = OOP_MT_TYPES.shell
         })
-        cls.shell = shell
+        --@TODO 设置shell，为何需要rawset方式？？？
+        rawset(cls, OOP_SHELL_NAME, shell)
         AllCls[shell] = cls
     end
     return shell

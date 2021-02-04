@@ -17,10 +17,8 @@ function _M.protected:DoExecTest()
     print("Total count: "..vegMeal.count)
     print("Total Cost: "..vegMeal.cost)
 
-    print("")
-
     local nonVegMeal = mealBuilder:PrepareNonVegMeal()
-    print("Non-Veg Meal")
+    print("\nNon-Veg Meal")
     nonVegMeal:ShowItems()
     print("Total count: "..nonVegMeal.count)
     print("Total Cost: "..nonVegMeal.cost)
