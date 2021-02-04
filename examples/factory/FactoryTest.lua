@@ -10,7 +10,8 @@ local _M = Class("FactoryTest", super)
 
 function _M.protected:DoExecTest()
     local factory = ShapeFactory.new()
-    factory:CreateShape("Circle"):Draw()
+    local shape = factory:CreateShape("Circle")
+    shape:Draw()
     factory:CreateShape("Rectangle"):Draw()
     factory:CreateShape("Square"):Draw()
 end
