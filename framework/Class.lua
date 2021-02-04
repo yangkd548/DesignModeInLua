@@ -8,6 +8,8 @@ require("framework.Bit")
 require("framework.BaseExtend")
 require("framework.TableExtend")
 
+--@region import function (考虑提取)
+
 function Import(moduleName, curName)
     local nameParts
     local fullName = moduleName
@@ -33,54 +35,11 @@ function Import(moduleName, curName)
     return require(fullName)
 end
 
---@region OOP base
-local AllCls = {}
-local function GetShellClass(shell)
-    return shell and AllCls[shell]
-end
---下面是代理table的类型（super用于代理self.super:SuperFunc的代码）
-local OOP_MT_TYPES = {inst = "OOP_inst", shell = "OOP_shell", class = "OOP_class", super = "OOP_super", member = "OOP_member"}
-local OOP_MT_NAME = "__metatable"
-local OOP_CLS_NAME = "class"
---@TODO 为所有的表，设置__type的目的是什么，考虑优化掉！！！
-local Null = {__name = "Null"}
-local NullFunc = function()
-end
-local function SetFilterNil(v)
-    return v ~= nil and v or Null
-end
-local function GetFilterNull(v)
-    return v ~= Null and v or nil
-end
---下面4个属性表，在正式lua5.3运行环境下，可以加Readonly处理（lua5.1不支持__pairs，会报错）
-local StorageType =  {default = nil, static = 2}  --------------------作为访问域前面的存储空间的控制
-local DomainType =  {private = nil, public = 1, protected = 2}    ----访问域，在static和非static都有
-local ReadType =  {default = nil, readonly = 1}  ---------------------仅对MemberType中default起作用
-local MemberType =  {default = nil, set = 1, get = 2} ----------------成员类型，default包含function、variable
+--@endregion
 
-local MemberProperties = {domain = "d", readonly = "r", static = "s", type = "t", value = "v", name = "n"}
-local MemberPropertieTypes = {d = DomainType, r = ReadType, s = StorageType, t = MemberType}
+--@region error functions
 
-local function GetKeyByValue(tbl, value)
-    for k,v in pairs(tbl) do
-        if v == value then
-            return k
-        end
-    end
-end
-
-local function GetInstClass(inst)
-    local shell = rawget(inst, OOP_CLS_NAME)
-    return GetShellClass(shell) or inst
-end
-local function GetClassName(cls)
-    return cls and cls.__name or ""
-end
-local function GetInstClassName(inst)
-    local cls = GetInstClass(inst)
-    return GetClassName(cls)
-end
-local function GetIndexInfo(cls, k)
+local function GetMemberFullName(cls, k)
     return cls.__name .. "." .. k
 end
 
@@ -120,30 +79,30 @@ local function ErrorRepeatDefine(cls, k, level)--成员定义重复
     error(string.format("This member (%s) already exists in the '%s', cannot be repeatedly defined.", k, cls.__name), level or 5)
 end
 local function ErrorCtorProperties(cls, level)
-    error(string.format("This member (%s) does not allow to setting properties.", GetIndexInfo(cls, "ctor")), level or 5)
+    error(string.format("This member (%s) does not allow to setting properties.", GetMemberFullName(cls, "ctor")), level or 5)
 end
 
 --成员访问 相关
 local function ErrorNoExist(cls, k, level)
-    error(string.format("attempt to call member '%s' (no-exist).", GetIndexInfo(cls, k)), level or 3)
+    error(string.format("attempt to call member '%s' (no-exist).", GetMemberFullName(cls, k)), level or 3)
 end
 local function ErrorCallPrivate(cls, k, level)
-    error(string.format("attempt to call member '%s' (private).", GetIndexInfo(cls, k)), level or 5)
+    error(string.format("attempt to call member '%s' (private).", GetMemberFullName(cls, k)), level or 5)
 end
 local function ErrorCallProtected(cls, k, level)
-    error(string.format("attempt to call member '%s' (protected).", GetIndexInfo(cls, k)), level or 5)
+    error(string.format("attempt to call member '%s' (protected).", GetMemberFullName(cls, k)), level or 5)
 end
 local function ErrorGet(cls, k, level)
-    error(string.format("attempt to get accessor '%s' (set).", GetIndexInfo(cls, k)), level or 3)
+    error(string.format("attempt to get accessor '%s' (set).", GetMemberFullName(cls, k)), level or 3)
 end
 local function ErrorSet(cls, k, level)
-    error(string.format("attempt to set accessor '%s' (get).", GetIndexInfo(cls, k)), level or 3)
+    error(string.format("attempt to set accessor '%s' (get).", GetMemberFullName(cls, k)), level or 3)
 end
 local function ErrorReadOnly(cls, k, level)
-    error(string.format("attempt to call accessor '%s' (readonly), in non ctor.", GetIndexInfo(cls, k)), level or 3)
+    error(string.format("attempt to call accessor '%s' (readonly), in non ctor.", GetMemberFullName(cls, k)), level or 3)
 end
 local function ErrorNotStatic(cls, k, level)
-    error(string.format("attempt to call member '%s' (not-static).", GetIndexInfo(cls, k)), level or 3)
+    error(string.format("attempt to call member '%s' (not-static).", GetMemberFullName(cls, k)), level or 3)
 end
 local function ErrorModifyInnerFunc(funcName, level)--尝试通过self修改ctor和dtor
     error(string.format("The '%s' member of class, which cannot be modify directly.", funcName), level or 3)
@@ -151,7 +110,7 @@ end
 
 --成员覆盖 相关
 local function ErrorCoverCurClassMember(cls, k, level)
-    error(string.format("The member (%s) of the current class is repeatedly defined", GetIndexInfo(cls, k)), level or 5)
+    error(string.format("The member (%s) of the current class is repeatedly defined", GetMemberFullName(cls, k)), level or 5)
 end
 local function ErrorCoverSuperPrivateMember(k, superCls, curCls, level)
     error(string.format("This private member (%s) already exists in the '%s' (cur:'%s'), cannot be repeatedly defined.", k, GetClassName(superCls), GetClassName(curCls)), level or 5)
@@ -162,7 +121,7 @@ end
 
 --访问基类的成员（读取self.super的ctor和成员） 相关
 local function ErrorAttemptCtor(cls, k, level)
-    error(string.format("Class ctor method cannot be called outside (%s).", GetIndexInfo(cls, k)), level or 3)
+    error(string.format("Class ctor method cannot be called outside (%s).", GetMemberFullName(cls, k)), level or 3)
 end
 local function ErrorAttemptSuper(cls, level)
     error(string.format("Access Super directly using 'self.super', not shell (%s).", GetClassName(cls)), level or 3)
@@ -171,20 +130,138 @@ local function ErrorAttemptClassCtor(cls, level)
     error(string.format("Error: Accessing the 'ctor' mothed of the super class of '%s', the first argument is not 'self'(object of cur class)!", GetClassName(cls)), level or 3)
 end
 local function ErrorAssignSuperMember(cur, super, k, level)
-    error(string.format("Access to the member (%s) of super class through 'self.super' is not allowed to write.", GetIndexInfo(super, k)), level or 3)
+    error(string.format("Access to the member (%s) of super class through 'self.super' is not allowed to write.", GetMemberFullName(super, k)), level or 3)
 end
 local function ErrorSuperNoExist(cls, k, level)
-    error(string.format("attempt to call member '%s' (no-exist) of super class .", GetIndexInfo(cls, k)), level or 3)
+    error(string.format("attempt to call member '%s' (no-exist) of super class .", GetMemberFullName(cls, k)), level or 3)
 end
 local function ErrorAttemptSuperVar(cls, k, level)
-    error(string.format("forbid to call variable '%s' by 'self.super'.", GetIndexInfo(cls, k)), level or 3)
+    error(string.format("forbid to call variable '%s' by 'self.super'.", GetMemberFullName(cls, k)), level or 3)
 end
 
---方法访问 相关
---@TODO 此方法的调用，考虑汇总到统一位置调用
-local function ErrorDotAttemptFunc(k, level)--限制只能用“:”(冒号)访问function
-    error(string.format("Please use ':' access method (%s).", k), level or 3)
+--@endregion
+
+--@region member properties
+
+--下面4个属性表，在正式lua5.3运行环境下，可以加Readonly处理（lua5.1不支持__pairs，会报错）
+local StorageType =  {default = nil, static = 2}  --------------------作为访问域前面的存储空间的控制
+local DomainType =  {private = nil, public = 1, protected = 2}    ----访问域，在static和非static都有
+local ReadType =  {default = nil, readonly = 1}  ---------------------仅对MemberType中default起作用
+local MemberType =  {default = nil, set = 1, get = 2} ----------------成员类型，default包含function、variable
+
+local MemberProperties = {domain = "d", readonly = "r", static = "s", type = "t", value = "v", name = "n"}
+local MemberPropertieTypes = {d = DomainType, r = ReadType, s = StorageType, t = MemberType}
+
+local function GetKeyByValue(tbl, value)
+    for k,v in pairs(tbl) do
+        if v == value then
+            return k
+        end
+    end
 end
+
+local ModifyKeyProperty = {
+    public = MemberProperties.domain, protected = MemberProperties.domain, private = MemberProperties.domain,
+    static = MemberProperties.static,
+    readonly = MemberProperties.readonly,
+    set = MemberProperties.type, get = MemberProperties.type,
+    name = MemberProperties.name
+}
+
+--@endregion
+
+--@region OOP base element
+
+--下面是代理table的类型（super用于代理self.super:SuperFunc的代码）
+local OOP_MT_TYPES = {inst = "OOP_inst", shell = "OOP_shell", class = "OOP_class", super = "OOP_super", member = "OOP_member"}
+local OOP_MT_NAME = "__metatable"
+local OOP_CLS_NAME = "class"
+--@TODO 为所有的表，设置__type的目的是什么，考虑优化掉！！！
+local Null = {__name = "Null"}
+local NullFunc = function()
+end
+local function SetFilterNil(v)
+    return v ~= nil and v or Null
+end
+local function GetFilterNull(v)
+    return v ~= Null and v or nil
+end
+
+--禁止修改，并且字段也自动作为关键字
+-- __index = true, __newindex = true, __pairs = true, __len = true, __metatable = true, __proxy = true,
+-- __readonly = true, __shell = true, singleton = true, abstract = true, __ctype = true, __create = true, __inst = true
+--__name表示类本身的名字，跟类模板和类实例的name，加以区分
+local InnerProperty = {singleton = true, abstract = true}
+local InnerFunction = {}
+local ClsShellKeys = Readonly {super = true, new = true, dtor = true}--super用于self.super:XXXX访问父类的方法，避免歧义，用module缩写_M定义成员时禁用
+local function IsClsShellKeys(k)
+    return ClsShellKeys[k]
+end
+
+local function Is__Property(k)
+    return IsString(k) and string.find(k, "__") == 1
+end
+
+--@endregion
+
+--@region get cls or shell
+
+local AllCls = {}
+local function GetClassOfShell(shell)
+    return shell and AllCls[shell]
+end
+
+local function GetClassOfInst(inst)
+    local shell = rawget(inst, OOP_CLS_NAME)
+    return GetClassOfShell(shell) or inst
+end
+
+local function GetClassName(cls)
+    return cls and cls.__name or ""
+end
+
+--由cls获取shell
+local function GetSuperCls(cls)
+    local mt = getmetatable(cls)
+    return mt and mt.__index or nil
+end
+
+--由cls获取clsSuper
+local function GetShellOfClass(cls)
+    return cls.__shell
+end
+
+--由cls获取superShell
+local function GetSuperShell(cls)
+    return GetShellOfClass(GetSuperCls(cls))
+end
+
+function IsSameClass(inst, cls, k)
+    return GetClassOfShell(inst.class) == cls
+end
+
+function IsInstOfSuper(inst, class)
+    if type(inst) ~= 'table' then
+        return false
+    end
+    local clsName = IsString(class) and class or class.__name
+    local cls = GetClassOfInst(inst)
+    while cls do
+        local curName = cls.__name
+        if curName == clsName then
+            return true
+        end
+        cls = GetSuperCls(cls)
+        if cls == nil then
+            return false
+        end
+    end
+    return false
+end
+
+--@endregion
+
+--@region add member function
 
 local function AddDomainProperty(member, k)
     member.d = DomainType[k]
@@ -198,232 +275,35 @@ end
 local function AddTypeProperty(member, k)
     member.t = MemberType[k]
 end
-local function DoSetMemberValue(cls, k, member, v)
-    member.v = SetFilterNil(v)
-    member.c = cls
-    member.n = k
-    rawset(cls, k, member)
-end
-local function SetMemberValue(cls, k, member, v)
-    --get/set成员，必须是function，否则报错
-    if member and (member.t == MemberType.get or member.t == MemberType.set) and not IsFunction(v) then
-        ErrorMustFunction(string.format("%s.%s.%s", cls.__name, GetKeyByValue(MemberType, member.t), k), 5)
-    end
-    DoSetMemberValue(cls, k, member, v)
-end
 
---禁止修改，并且字段也自动作为关键字
--- __index = true, __newindex = true, __pairs = true, __len = true, __metatable = true, __proxy = true,
--- __readonly = true, __shell = true, singleton = true, abstract = true, __ctype = true, __create = true, __inst = true
---__name表示类本身的名字，跟类模板和类实例的name，加以区分
-local InnerProperty = {singleton = true, abstract = true}
-local InnerFunction = {}
-local ClsShellKeys = Readonly {super = true, new = true, dtor = true}--super用于self.super:XXXX访问父类的方法，避免歧义，用module缩写_M定义成员时禁用
-local function IsClsShellKeys(k)
-    return ClsShellKeys[k]
-end
 local ModifyKeyFunc = {
     public = AddDomainProperty, protected = AddDomainProperty, private = AddDomainProperty,
     static = AddStaticProperty,
     readonly = AddReadonlyProperty,
     set = AddTypeProperty, get = AddTypeProperty
 }
-local ModifyKeyProperty = {
-    public = MemberProperties.domain, protected = MemberProperties.domain, private = MemberProperties.domain,
-    static = MemberProperties.static,
-    readonly = MemberProperties.readonly,
-    set = MemberProperties.type, get = MemberProperties.type,
-    name = MemberProperties.name
-}
-local function IsModifyWord(key)
-    return ModifyKeyFunc[key] ~= nil or false
-end
+
+-- local function IsModifyWord(key)
+--     return ModifyKeyFunc[key] ~= nil
+-- end
+
 local function IsKeyword(k)
     return ModifyKeyFunc[k] ~= nil or InnerProperty[k] or InnerFunction[k] or ClsShellKeys[k] or false
 end
-local function Is__Property(k)
-    return IsString(k) and string.find(k, "__") == 1
+
+local function DoSetMemberValue(cls, k, member, v)
+    member.v = SetFilterNil(v)
+    member.c = cls
+    member.n = k
+    rawset(cls, k, member)
 end
 
---由cls获取shell
-local function GetSuperCls(cls)
-    local mt = getmetatable(cls)
-    return mt and mt.__index or nil
-end
---由cls获取clsSuper
-local function GetClsShell(cls)
-    return cls.__shell
-end
---由cls获取superShell
-local function GetSuperShell(cls)
-    return GetClsShell(GetSuperCls(cls))
-end
-
---获取成员 相关
-local function GetStaticMemberValue(cls, k)
-    local member = cls[k]
-    if member then
-        --@TODO 考虑这里与运行时获取数据的逻辑，进行统一整合
-        if member.t == MemberType.set then
-            ErrorGet(cls, k)
-        elseif member.t == MemberType.get then
-            return member.v()
-        elseif member.s == StorageType.static then
-            return GetFilterNull(member.v)
-        else
-            ErrorNotStatic(cls, k)
-        end
-    else
-        ErrorNoExist(cls, k)
+local function SetMemberValue(cls, k, member, v)
+    --get/set成员，必须是function，否则报错
+    if member and (member.t == MemberType.get or member.t == MemberType.set) and not IsFunction(v) then
+        ErrorMustFunction(string.format("%s.%s.%s", cls.__name, GetKeyByValue(MemberType, member.t), k), 5)
     end
-end
-local function GetMemberValueAll(cls, k)
-    local member = rawget(cls, k)
-    if member then
-        --@TODO member统一为table结构，这里的判断就可以省掉了
-        return IsFunction(member) and GetFilterNull(member) or GetFilterNull(member.v)
-    end
-end
-
---获取super成员 相关
-local function GetNearCtor(cls)
-    local cur = cls
-    while true do
-        if cur.ctor.v ~= NullFunc then
-            return cur.ctor
-        end
-        cur = GetSuperCls(cur)
-        if cur == Null then
-            break
-        end
-    end
-    return cls.ctor
-end
-local function GetCurFuncCls(cls, k, func)
-    local cur = cls
-    while true do
-        if GetMemberValueAll(cls, k) == func then
-            return cls
-        end
-        cls = GetSuperCls(cls)
-        if cls == Null then
-            break
-        end
-    end
-    ErrorNoExist(cur, k)
-end
-local function ChangeClass(inst, cls, newCls)
-    --修改shell（普通对外叫class，内部叫__shell）
-    rawset(inst, OOP_CLS_NAME, newCls.__shell)
-    --先关闭当前cls的mt，修改完后，再恢复
-    rawset(cls, "__metatable", nil)
-    setmetatable(inst, newCls)
-    rawset(cls, "__metatable", OOP_MT_TYPES.class)
-end
---使用原方法名，方便调试
---使用loadstring为的是，元方法index获取的k为对应的k
-local FuncFormat = "return function(inst, func, ...) local %s = func return %s(inst, ...) end"
-local function ExecFormatFunction(inst, member, ...)
-    print(string.format("\n\t\t<<<<<<<<<<<<<<<进入方法%s>>>>>>>>>>>>>", GetIndexInfo(inst, member.n)))
-    local temp = loadstring(string.format(FuncFormat, member.n, member.n))
-    local result = temp()(inst, member.v, ...)
-    print(string.format("\t\t--------------Leave方法%s---------------\n\n", GetIndexInfo(inst, member.n)))
-    return result
-end
-local function ExecMemberFunc(member, inst, cls, ...)
-    local result
-    if member.c ~= cls then
-        ChangeClass(inst, cls, member.c)
-        result = ExecFormatFunction(inst, member, ...)
-        ChangeClass(inst, member.c, cls)
-    else
-        result = ExecFormatFunction(inst, member, ...)
-    end
-    return result
-end
---获取“:”(冒号)访问的代理方法
-local function GetColonProxy(t, k, func)
-    return function(...)
-        print("进行“:”(冒号)访问的判定：", k)
-        local args = {...}
-        if args[1] and args[1] == t then
-            return func(...)
-        else
-            ErrorDotAttemptFunc(k)
-        end
-    end
-end
---self:Function==>转换为self:SuperFunction（父类方法访问域：public和private）
-local function GetSuperFunctionProxy(t, k, member, cls)
-    return GetColonProxy(t, k, 
-        function(...) 
-            return ExecMemberFunc(member, t, cls, ...) 
-        end
-    )
-end
---self.super:Function==>转换为self:SuperFuntion
-local function GetSuperFuncProxy(t, inst, cls, member)
-    return function(...)
-        local args = {...}
-        return GetColonProxy(t, member.n,
-            function()
-                table.remove(args, 1)
-                return ExecMemberFunc(member, inst, cls, unpack(args))
-            end
-        )
-    end
-end
-local function GetSuperCtorProxy(fromK, k, t, inst, cls, cur, member)
-    --@desc 对于子类访问父类的ctor方法，限制必须在自己的ctor中
-    if fromK == k then
-        return GetSuperFuncProxy(t, inst, cls, member)
-    else
-        ErrorAttemptCtor(cur, k)
-    end
-end
-local function GetNorFuncSuper(cls, k)
-    local cur = cls
-    cls = GetSuperCls(cls)
-    local member = cls[k]
-    if member then
-        return member.c
-    else
-        ErrorSuperNoExist(cur, k)
-    end
-end
-local function GetFuncSuper(cls, k)
-    if k == "ctor" then
-        return GetNearCtor(GetSuperCls(cls)).c
-    else
-        return GetNorFuncSuper(cls, k)
-    end
-end
---统一的self.super调用
-local function CreateSuperProxy(inst, cls, fromK, func)
-    local cur = GetCurFuncCls(cls, fromK, func)
-    local super = GetFuncSuper(cur, fromK)
-    return setmetatable({__type = OOP_MT_TYPES.super}, {
-        __index = function(t, k)
-            --如果通过self.super.XXX访问的是非方法，则报错提示
-            --@TODO 考虑是否提取到“设置代理”的外部
-            local member = super[k]
-            if member.t == nil and not IsFunction(member.v) then
-                ErrorAttemptSuperVar(super, k)
-            end
-            --如果当前是方法，则自动赋值第一个参数是????????
-            if k == "ctor" then
-                return GetSuperCtorProxy(fromK, k, t, inst, cls, cur, member)
-            else
-                print("进入self.super代理首层:", GetIndexInfo(cls, k))
-                --@TODO 考虑这里是否需要做“访问域”判定
-                return GetSuperFuncProxy(t, inst, cls, member)
-            end
-        end,
-        __newindex = function(t, k)
-            ErrorAssignSuperMember(cur, super, k)
-        end,
-        __metatable = OOP_MT_TYPES.super
-    })
+    DoSetMemberValue(cls, k, member, v)
 end
 
 local function CheckCoverError(cls, k, pMember)
@@ -455,7 +335,8 @@ end
 local function CopyMember(member)
     return member and table.copyTable(member) or {}
 end
-local function CreateRealMember(member, cls)
+
+local function CreateMember(member, cls)
     local result = CopyMember(member)
     result.c = cls
     return result
@@ -477,12 +358,37 @@ local function AddMember(cls, k, v, member)
         end
     else
         CheckCoverError(cls, k, member)
-        SetMemberValue(cls, k, CreateRealMember(member), v)
+        SetMemberValue(cls, k, CreateMember(member), v)
+    end
+end
+
+--@endregion
+
+--@region get member function
+
+local function GetStaticMemberValue(cls, k)
+    local member = cls[k]
+    if member then
+        --@TODO 考虑这里与运行时获取数据的逻辑，进行统一整合
+        if member.t == MemberType.set then
+            ErrorGet(cls, k)
+        elseif member.t == MemberType.get then
+            return member.v()
+        elseif member.s == StorageType.static then
+            return GetFilterNull(member.v)
+        else
+            ErrorNotStatic(cls, k)
+        end
+    else
+        ErrorNoExist(cls, k)
     end
 end
 
 local function GetMember(cls, k, member)
     local addPropertyFunc = ModifyKeyFunc[k]
+    if k == "static" then
+        print("555")
+    end
     if addPropertyFunc then
         local mv = member and member[ModifyKeyProperty[k]]
         if mv ~= nil then
@@ -504,9 +410,398 @@ local function GetMember(cls, k, member)
         return GetStaticMemberValue(cls, k)
     end
 end
+
+local function GetMemberValue(cls, k)
+    local member = rawget(cls, k)
+    if member then
+        --@TODO member统一为table结构，这里的判断就可以省掉了
+        return IsFunction(member) and GetFilterNull(member) or GetFilterNull(member.v)
+    end
+end
+
 --@endregion
 
---@region shell function
+--@region get/set class function
+
+--获取super成员 相关
+local function GetNearCtor(cls)
+    local cur = cls
+    while true do
+        if cur.ctor.v ~= NullFunc then
+            return cur.ctor
+        end
+        cur = GetSuperCls(cur)
+        if cur == Null then
+            break
+        end
+    end
+    return cls.ctor
+end
+
+local function GetCurFuncCls(cls, k, func)
+    local cur = cls
+    while true do
+        if GetMemberValue(cls, k) == func then
+            return cls
+        end
+        cls = GetSuperCls(cls)
+        if cls == Null then
+            break
+        end
+    end
+    ErrorNoExist(cur, k)
+end
+
+local function ChangeClass(inst, cls, newCls)
+    --修改shell（普通对外叫class，内部叫__shell）
+    rawset(inst, OOP_CLS_NAME, newCls.__shell)
+    --先关闭当前cls的mt，修改完后，再恢复
+    rawset(cls, "__metatable", nil)
+    setmetatable(inst, newCls)
+    rawset(cls, "__metatable", OOP_MT_TYPES.class)
+end
+
+--@endregion
+
+--@region exec function
+
+--使用原方法名，方便调试
+--使用loadstring为的是，元方法index获取的k为对应的k
+local FuncFormat = "return function(inst, func, ...) local %s = func return %s(inst, ...) end"
+local function ExecFormatFunction(inst, member, ...)
+    print(string.format("\n\t\t<<<<<<<<<<<<<<<进入方法%s>>>>>>>>>>>>>", GetMemberFullName(inst, member.n)))
+    local temp = loadstring(string.format(FuncFormat, member.n, member.n))
+    local result = temp()(inst, member.v, ...)
+    print(string.format("\t\t--------------Leave方法%s---------------\n\n", GetMemberFullName(inst, member.n)))
+    return result
+end
+
+local function ExecMemberFunc(member, inst, cls, ...)
+    local result
+    if member.c ~= cls then
+        ChangeClass(inst, cls, member.c)
+        result = ExecFormatFunction(inst, member, ...)
+        ChangeClass(inst, member.c, cls)
+    else
+        result = ExecFormatFunction(inst, member, ...)
+    end
+    return result
+end
+
+--方法访问 相关
+--@TODO 此方法的调用，考虑汇总到统一位置调用
+local function ErrorDotAttemptFunc(k, level)--限制只能用“:”(冒号)访问function
+    error(string.format("Please use ':' access method (%s).", k), level or 3)
+end
+
+--获取“:”(冒号)访问的代理方法
+local function GetColonProxy(t, k, func)
+    return function(...)
+        print("进行“:”(冒号)访问的判定：", k)
+        local args = {...}
+        if args[1] and args[1] == t then
+            return func(...)
+        else
+            ErrorDotAttemptFunc(k)
+        end
+    end
+end
+
+--self:Function==>转换为self:SuperFunction（父类方法访问域：public和private）
+local function GetSelfSuperFuncProxy(t, k, member, cls)
+    return GetColonProxy(t, k,
+        function(...)
+            return ExecMemberFunc(member, t, cls, ...)
+        end
+    )
+end
+
+--self.super:Function==>转换为self:SuperFuntion
+local function GetSuperFuncProxy(t, inst, cls, member)
+    return function(...)
+        local args = {...}
+        return GetColonProxy(t, member.n,
+            function()
+                table.remove(args, 1)
+                return ExecMemberFunc(member, inst, cls, unpack(args))
+            end
+        )
+    end
+end
+
+local function GetSuperCtorProxy(fromK, k, t, inst, cls, cur, member)
+    --@desc 对于子类访问父类的ctor方法，限制必须在自己的ctor中
+    if fromK == k then
+        return GetSuperFuncProxy(t, inst, cls, member)
+    else
+        ErrorAttemptCtor(cur, k)
+    end
+end
+
+local function GetNorFuncSuper(cls, k)
+    local cur = cls
+    cls = GetSuperCls(cls)
+    local member = cls[k]
+    if member then
+        return member.c
+    else
+        ErrorSuperNoExist(cur, k)
+    end
+end
+
+local function GetFuncSuper(cls, k)
+    if k == "ctor" then
+        return GetNearCtor(GetSuperCls(cls)).c
+    else
+        return GetNorFuncSuper(cls, k)
+    end
+end
+
+--统一的self.super调用
+local function CreateSuperProxy(inst, cls, fromK, func)
+    local cur = GetCurFuncCls(cls, fromK, func)
+    local super = GetFuncSuper(cur, fromK)
+    return setmetatable({__type = OOP_MT_TYPES.super}, {
+        __index = function(t, k)
+            --如果通过self.super.XXX访问的是非方法，则报错提示
+            --@TODO 考虑是否提取到“设置代理”的外部
+            local member = super[k]
+            if member.t == nil and not IsFunction(member.v) then
+                ErrorAttemptSuperVar(super, k)
+            end
+            --如果当前是方法，则自动赋值第一个参数是????????
+            if k == "ctor" then
+                return GetSuperCtorProxy(fromK, k, t, inst, cls, cur, member)
+            else
+                print("进入self.super代理首层:", GetMemberFullName(cls, k))
+                --@TODO 考虑这里是否需要做“访问域”判定
+                return GetSuperFuncProxy(t, inst, cls, member)
+            end
+        end,
+        __newindex = function(t, k)
+            ErrorAssignSuperMember(cur, super, k)
+        end,
+        __metatable = OOP_MT_TYPES.super
+    })
+end
+
+--@endregion
+
+--@region class create
+
+local function CheckAbstract(cls)
+    if rawget(cls, "abstract") then
+        ErrorAbstract(cls)
+    end
+end
+
+local function ExecCtor(inst, cls, ...)
+    --面向inst的class是__shell(壳)
+    rawset(inst, OOP_CLS_NAME, cls.__shell)
+    --这里的ctor不能改名，后续逻辑会用于判断
+    local ctor = GetNearCtor(cls)
+    ExecMemberFunc(ctor, inst, cls, ...)
+    return inst
+end
+
+local function CreateC(cls, ...)
+    CheckAbstract(cls)
+    local inst = cls.__create(...)
+    -- copy fields from class to  native object
+    for k, v in pairs(cls) do
+        inst[k] = v
+    end
+    return ExecCtor(inst, cls, ...)
+end
+
+local function CreateLua(cls, ...)
+    CheckAbstract(cls)
+    --为inst实例，设置元表，以便在运行阶段，实现OOP
+    local inst = setmetatable({__type = OOP_MT_TYPES.inst}, cls)
+    return ExecCtor(inst, cls, ...)
+end
+
+local SingleInsts = {}
+local function CreateSingle(cls)
+    function cls.get:singleton()
+        return SingleInsts[cls]
+    end
+end
+
+local function SetNewFunc(cls, createFunc)
+    --单例类的实例化，也是使用new，再次new不会创建新的实例，此后可以使用 class.singleton 获取了
+    cls.new = function(...)
+        if cls.singleton then
+            if not SingleInsts[cls] then
+                SingleInsts[cls] = createFunc(cls, ...)
+                CreateSingle(cls)
+            end
+            return SingleInsts[cls]
+        else
+            return createFunc(cls, ...)
+        end
+    end
+end
+
+--@endregion
+
+--@region instance accessor
+
+--判定为外部访问，只能是public访问域，否则按访问域进行报错提示
+local function AllowPublic(domain, cls, k)
+    if domain ~= DomainType.public then
+        if domain == DomainType.protected then
+            ErrorCallProtected(cls, k)
+        else
+            ErrorCallPrivate(cls, k)
+        end
+    end
+end
+
+--判定为子类访问，唯独不能访问private的访问域
+local function DisablePrivate(domain, cls, k, level)
+    if domain == DomainType.private then
+        ErrorCallPrivate(cls, k, level)
+    end
+end
+
+--经过了一层index/newindex代理，获取调动环境的层级为3
+local function CheckDomain(k, cls, member)
+    local curCls = member.c
+    local _, inst = debug.getlocal(3, 1)
+    local domain = member.d
+    if not IsTable(inst) then
+        print("------------------******************************----特殊逻辑，待分析.....")
+        AllowPublic(domain, cls, k)
+    else
+        --cls==Circle, member.c==Shape, Circle是Shape的子类
+        --如果inst是member.c的实例，则可以访问所有
+        --是cls类的对象inst，发起的访问
+        --访问的是member.c的私有方法count
+        --是在member.c的ctor方法中进行访问的
+            --如何找到当前ctor方法的envMember
+            --其envMember.c与member。c是相对的cls，这样所有的访问域，都可以通过校验
+            local domainStr = GetKeyByValue(DomainType, domain) or "private"
+            local type = getmetatable(inst)
+        -- print("-------------------------------", inst.__name == curCls.__name, inst.__name, curCls.__name, type, "键值："..k, "访问域："..domainStr)
+        print("检查访问域:", GetMemberFullName(cls, k))
+        if IsSameClass(inst, curCls, k) then
+            print("是当前类的方法，无访问域限制：", k)
+        else
+            if IsInstOfSuper(inst, cls) then
+                DisablePrivate(domain, cls, k)
+                print("不是private方法，可以访问：", k)
+            else
+                AllowPublic(domain, cls, k)
+                print("外部访问，public方法可以访问：", k)
+            end
+        end
+    end
+    return true
+end
+
+--暂时使用“浅拷贝”，现在看，是满足需求的
+local function CopyValue(val)
+    if type(val) == "table" then
+        local copy = {}
+        for i, v in pairs(val) do
+            copy[i] = v
+        end
+        return copy
+    else
+        return val
+    end
+end
+
+--实例对象，访问成员的处理
+local function CreateInstAccessor(cls)
+    --调用阶段（使用self或外部实例调用）
+    function cls.__index(t, k)
+        if k == "ctor" then
+            ErrorAttemptCtor(GetClassOfInst(t), k)
+        elseif k == "dtor" then
+            return cls.dtor
+        elseif k == "super" then
+            local funcTbl = debug.getinfo(2)
+            return CreateSuperProxy(t, cls, funcTbl.name or "ctor", funcTbl.func)
+        else
+            local member = cls[k]
+            if member == nil then
+                ErrorNoExist(cls, k)
+            else
+                --增加：特定非member类型（暂时只支持string和number类型），直接返回
+                if type(member) == "string" or type(member) == "number" then
+                    return member
+                elseif CheckDomain(k, cls, member) then
+                    if member.t == MemberType.set then
+                        ErrorGet(cls, k)
+                    elseif member.t == MemberType.get then
+                        return member.v(t)
+                    elseif member.s == StorageType.static then
+                        return GetStaticMemberValue(cls, k)
+                    else
+                        local v = rawget(t, k)
+                        local member = cls[k]
+                        if IsFunction(member.v) then
+                            if v == nil then
+                                --前面已经使用了CheckDomain检查了访问域，这里就不用检查了
+                                print("设置执行“父类的默认方法”:", GetMemberFullName(cls, k))
+                                return GetSelfSuperFuncProxy(t, k, member, cls)
+                            else
+                                --访问自身的方法，不用走代理，只判断是否使用了“:”冒号
+                                return GetColonProxy(t, k, member.v)
+                            end
+                        else
+                            if v == nil then
+                                if member.s == StorageType.default and member.t == MemberType.default then
+                                    --只有非static、default的变量，需要拷贝
+                                    --super的方法，拷贝到子类，就失去了访问super的private成员的权限了，所有不能拷贝方法
+                                    rawset(t, k, CopyValue(member.v))
+                                end
+                            end
+                            return v or rawget(t, k) or member.v
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    function cls.__newindex(t, k, v)
+        if k == "ctor" or k == "dtor" then
+            ErrorModifyInnerFunc(k)
+        else
+            local member = cls[k]
+            if member == nil then
+                ErrorNoExist(cls, k)
+            else
+                if CheckDomain(k, cls, member) then
+                    if member.r == ReadType.readonly then
+                        local funcTbl = debug.getinfo(2)
+                        --funcTbl.name为nil，是OOP内部，通过继承查找到基类ctor，进行调用的
+                        if funcTbl.name and funcTbl.name ~= "ctor" then
+                            ErrorReadOnly(cls, k)
+                        end
+                    end
+                    if member.t == MemberType.get then
+                        ErrorSet(cls, k)
+                    elseif member.t == MemberType.set then
+                        member.v(t, v)
+                    elseif member.s == StorageType.static then
+                        --static设置类模板的成员的数值
+                        SetMemberValue(cls, k, member, v)
+                    else
+                        rawset(t, k, SetFilterNil(v))
+                    end
+                end
+            end
+        end
+    end
+end
+--@endregion
+
+--@region class creator
+
 --实现定义阶段，实现OOP
 local function CreateClassShell(cls)
     if rawget(cls, "__shell") then
@@ -569,59 +864,7 @@ local function CreateClassShell(cls)
 end
 --@endregion
 
---@region class create
-local function CheckAbstract(cls)
-    if rawget(cls, "abstract") then
-        ErrorAbstract(cls)
-    end
-end
-
-local function ExecCtor(inst, cls, ...)
-    --面向inst的class是__shell(壳)
-    rawset(inst, OOP_CLS_NAME, cls.__shell)
-    --这里的ctor不能改名，后续逻辑会用于判断
-    local ctor = GetNearCtor(cls)
-    ExecMemberFunc(ctor, inst, cls, ...)
-    return inst
-end
-
-local function CreateC(cls, ...)
-    CheckAbstract(cls)
-    local inst = cls.__create(...)
-    -- copy fields from class to  native object
-    for k, v in pairs(cls) do
-        inst[k] = v
-    end
-    return ExecCtor(inst, cls, ...)
-end
-
-local function CreateLua(cls, ...)
-    CheckAbstract(cls)
-    --为inst实例，设置元表，以便在运行阶段，实现OOP
-    local inst = setmetatable({__type = OOP_MT_TYPES.inst}, cls)
-    return ExecCtor(inst, cls, ...)
-end
-
-local SingleInsts = {}
-local function CreateSingle(cls)
-    function cls.get:singleton()
-        return SingleInsts[cls]
-    end
-end
-local function SetNewFunc(cls, createFunc)
-    --单例类的实例化，也是使用new，再次new不会创建新的实例，此后可以使用 class.singleton 获取了
-    cls.new = function(...)
-        if cls.singleton then
-            if not SingleInsts[cls] then
-                SingleInsts[cls] = createFunc(cls, ...)
-                CreateSingle(cls)
-            end
-            return SingleInsts[cls]
-        else
-            return createFunc(cls, ...)
-        end
-    end
-end
+--@region OPP Entry
 
 local function SetClassProperties(cls, name, createFunc, type)
     cls.__name = name
@@ -631,193 +874,7 @@ local function SetClassProperties(cls, name, createFunc, type)
     cls.ctor = {c = cls, v = NullFunc}
     SetNewFunc(cls, createFunc)
 end
---@endregion
 
---@region instance OOP
-
---判定为外部访问，只能是public访问域，否则按访问域进行报错提示
-local function AllowPublic(domain, cls, k)
-    if domain ~= DomainType.public then
-        if domain == DomainType.protected then
-            ErrorCallProtected(cls, k)
-        else
-            ErrorCallPrivate(cls, k)
-        end
-    end
-end
-
---判定为子类访问，唯独不能访问private的访问域
-local function DisablePrivate(domain, cls, k, level)
-    if domain == DomainType.private then
-        ErrorCallPrivate(cls, k, level)
-    end
-end
-
---经过了一层index/newindex代理，获取调动环境的层级为3
-local function CheckDomain(k, cls, member)
-    local curCls = member.c
-    local _, inst = debug.getlocal(3, 1)
-    local domain = member.d
-    if not IsTable(inst) then
-        print("------------------******************************----特殊逻辑，待分析.....")
-        AllowPublic(domain, cls, k)
-    else
-        --cls==Circle, member.c==Shape, Circle是Shape的子类
-        --如果inst是member.c的实例，则可以访问所有
-        --是cls类的对象inst，发起的访问
-        --访问的是member.c的私有方法count
-        --是在member.c的ctor方法中进行访问的
-            --如何找到当前ctor方法的envMember
-            --其envMember.c与member。c是相对的cls，这样所有的访问域，都可以通过校验
-            local domainStr = GetKeyByValue(DomainType, domain) or "private"
-            local type = getmetatable(inst)
-        -- print("-------------------------------", inst.__name == curCls.__name, inst.__name, curCls.__name, type, "键值："..k, "访问域："..domainStr)
-        print("检查访问域:", GetIndexInfo(cls, k))
-        if IsSameClass(inst, curCls, k) then
-            print("是当前类的方法，无访问域限制：", k)
-        else
-            if IsInstSuperClass(inst, cls) then
-                DisablePrivate(domain, cls, k)
-                print("不是private方法，可以访问：", k)
-            else
-                AllowPublic(domain, cls, k)
-                print("外部访问，public方法可以访问：", k)
-            end
-        end
-    end
-    return true
-end
---暂时使用“浅拷贝”，现在看，是满足需求的
-local function CopyValue(val)
-    if type(val) == "table" then
-        local copy = {}
-        for i, v in pairs(val) do
-            copy[i] = v
-        end
-        return copy
-    else
-        return val
-    end
-end
---实现运行阶段，实现OOP
-local function RealizeInstanceOOP(cls)
-    --调用阶段（使用self或外部实例调用）
-    function cls.__index(t, k)
-        if k == "ctor" then
-            ErrorAttemptCtor(GetInstClass(t), k)
-        elseif k == "dtor" then
-            return cls.dtor
-        elseif k == "super" then
-            local funcTbl = debug.getinfo(2)
-            return CreateSuperProxy(t, cls, funcTbl.name or "ctor", funcTbl.func)
-        else
-            local member = cls[k]
-            if member == nil then
-                ErrorNoExist(cls, k)
-            else
-                --增加：特定非member类型（暂时只支持string和number类型），直接返回
-                if type(member) == "string" or type(member) == "number" then
-                    return member
-                elseif CheckDomain(k, cls, member) then
-                    if member.t == MemberType.set then
-                        ErrorGet(cls, k)
-                    elseif member.t == MemberType.get then
-                        return member.v(t)
-                    elseif member.s == StorageType.static then
-                        return GetStaticMemberValue(cls, k)
-                    else
-                        local v = rawget(t, k)
-                        local member = cls[k]
-                        if IsFunction(member.v) then
-                            if v == nil then
-                                --前面已经使用了CheckDomain检查了访问域，这里就不用检查了
-                                print("设置执行“父类的默认方法”:", GetIndexInfo(cls, k))
-                                return GetSuperFunctionProxy(t, k, member, cls)
-                            else
-                                --访问自身的方法，不用走代理，只判断是否使用了“:”冒号
-                                return GetColonProxy(t, k, member.v)
-                            end
-                        else
-                            if v == nil then
-                                if member.s == StorageType.default and member.t == MemberType.default then
-                                    --只有非static、default的变量，需要拷贝
-                                    --super的方法，拷贝到子类，就失去了访问super的private成员的权限了，所有不能拷贝方法
-                                    rawset(t, k, CopyValue(member.v))
-                                end
-                            end
-                            return v or rawget(t, k) or member.v
-                        end
-                    end
-                end
-            end
-        end
-    end
-
-    function cls.__newindex(t, k, v)
-        if k == "ctor" or k == "dtor" then
-            ErrorModifyInnerFunc(k)
-        else
-            local member = cls[k]
-            if member == nil then
-                ErrorNoExist(cls, k)
-            else
-                if CheckDomain(k, cls, member) then
-                    if member.r == ReadType.readonly then
-                        local funcTbl = debug.getinfo(2)
-                        --funcTbl.name为nil，是OOP内部，通过继承查找到基类ctor，进行调用的
-                        if funcTbl.name and funcTbl.name ~= "ctor" then
-                            ErrorReadOnly(cls, k)
-                        end
-                    end
-                    if member.t == MemberType.get then
-                        ErrorSet(cls, k)
-                    elseif member.t == MemberType.set then
-                        member.v(t, v)
-                    elseif member.s == StorageType.static then
-                        --static设置类模板的成员的数值
-                        SetMemberValue(cls, k, member, v)
-                    else
-                        rawset(t, k, SetFilterNil(v))
-                    end
-                end
-            end
-        end
-    end
-end
---@endregion
-
---@region complete OOP Entry
-local function RealizeOOP(cls)
-    RealizeInstanceOOP(cls)
-    return CreateClassShell(cls)
-end
---@endregion
-
-function IsSameClass(inst, cls, k)
-    return GetShellClass(inst.class) == cls
-end
-
-function IsInstSuperClass(inst, class)
-    if type(inst) ~= 'table' then
-        return false
-    end
-    local clsName = IsString(class) and class or class.__name
-    local cls = GetInstClass(inst)
-    while cls do
-        local curName = cls.__name
-        if curName == clsName then
-            return true
-        end
-        cls = GetSuperCls(cls)
-        if cls == nil then
-            return false
-        end
-    end
-    return false
-end
---@endregion
-
---@region OPP Entry
 function Class(name, super)
     if super then
         local superType = type(super)
@@ -842,15 +899,17 @@ function Class(name, super)
         cls.super = isTable and super or Null
         SetClassProperties(cls, name, CreateC, 1)
     else
-        local superCls = GetShellClass(super)
+        local superCls = GetClassOfShell(super)
         if super and superCls == nil then
             ErrorNoSuperCls(name, super.__name)
         end
         SetClassProperties(cls, name, CreateLua, 2)
         --类继承关系，指向真实cls
         setmetatable(cls, {__index = superCls or Null})
-        cls = RealizeOOP(cls)
+        CreateInstAccessor(cls)
+        cls = CreateClassShell(cls)
     end
     return cls
 end
+
 --@endregion
