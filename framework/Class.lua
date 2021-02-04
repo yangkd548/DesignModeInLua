@@ -126,9 +126,6 @@ end
 local function ErrorAttemptSuper(cls, level)
     error(string.format("Access Super directly using 'self.super', not shell (%s).", GetClassName(cls)), level or 3)
 end
-local function ErrorAttemptClassCtor(cls, level)
-    error(string.format("Error: Accessing the 'ctor' mothed of the super class of '%s', the first argument is not 'self'(object of cur class)!", GetClassName(cls)), level or 3)
-end
 local function ErrorAssignSuperMember(cur, super, k, level)
     error(string.format("Access to the member (%s) of super class through 'self.super' is not allowed to write.", GetMemberFullName(super, k)), level or 3)
 end
@@ -174,7 +171,6 @@ local ModifyKeyProperty = {
 
 --下面是代理table的类型（super用于代理self.super:SuperFunc的代码）
 local OOP_MT_TYPES = {inst = "OOP_inst", shell = "OOP_shell", class = "OOP_class", super = "OOP_super", member = "OOP_member"}
-local OOP_MT_NAME = "__metatable"
 local OOP_CLS_NAME = "class"
 --@TODO 为所有的表，设置__type的目的是什么，考虑优化掉！！！
 local Null = {__name = "Null"}
@@ -187,9 +183,9 @@ local function GetFilterNull(v)
     return v ~= Null and v or nil
 end
 
---禁止修改，并且字段也自动作为关键字
+--禁止使用，所有“双下划线”开头的变量名（包含且不限于，下面的示例）
 -- __index = true, __newindex = true, __pairs = true, __len = true, __metatable = true, __proxy = true,
--- __readonly = true, __shell = true, singleton = true, abstract = true, __ctype = true, __create = true, __inst = true
+-- __readonly = true, singleton = true, abstract = true, __ctype = true, __create = true, __inst = true
 --__name表示类本身的名字，跟类模板和类实例的name，加以区分
 local InnerProperty = {singleton = true, abstract = true}
 local InnerFunction = {}
@@ -226,18 +222,18 @@ local function GetSuperCls(cls)
     return mt and mt.__index or nil
 end
 
---由cls获取clsSuper
+-- --由cls获取shell
 local function GetShellOfClass(cls)
-    return cls.__shell
+    return cls.shell
 end
 
---由cls获取superShell
-local function GetSuperShell(cls)
-    return GetShellOfClass(GetSuperCls(cls))
+-- --由Inst获取shell
+local function GetShellOfInst(inst)
+    return inst.class
 end
 
 function IsSameClass(inst, cls, k)
-    return GetClassOfShell(inst.class) == cls
+    return GetClassOfShell(GetShellOfInst(inst)) == cls
 end
 
 function IsInstOfSuper(inst, class)
@@ -282,10 +278,6 @@ local ModifyKeyFunc = {
     readonly = AddReadonlyProperty,
     set = AddTypeProperty, get = AddTypeProperty
 }
-
--- local function IsModifyWord(key)
---     return ModifyKeyFunc[key] ~= nil
--- end
 
 local function IsKeyword(k)
     return ModifyKeyFunc[k] ~= nil or InnerProperty[k] or InnerFunction[k] or ClsShellKeys[k] or false
@@ -454,7 +446,7 @@ end
 
 local function ChangeClass(inst, cls, newCls)
     --修改shell（普通对外叫class，内部叫__shell）
-    rawset(inst, OOP_CLS_NAME, newCls.__shell)
+    rawset(inst, OOP_CLS_NAME, newCls.shell)
     --先关闭当前cls的mt，修改完后，再恢复
     rawset(cls, "__metatable", nil)
     setmetatable(inst, newCls)
@@ -597,7 +589,7 @@ end
 
 local function ExecCtor(inst, cls, ...)
     --面向inst的class是__shell(壳)
-    rawset(inst, OOP_CLS_NAME, cls.__shell)
+    rawset(inst, OOP_CLS_NAME, GetShellOfClass(cls))
     --这里的ctor不能改名，后续逻辑会用于判断
     local ctor = GetNearCtor(cls)
     ExecMemberFunc(ctor, inst, cls, ...)
@@ -804,13 +796,9 @@ end
 
 --实现定义阶段，实现OOP
 local function CreateClassShell(cls)
-    if rawget(cls, "__shell") then
-        return cls.__shell
-    end
-    if rawget(cls, "__readonly") then
-        RepeatReadOnly()
-    else
-        local shell = setmetatable({__type = OOP_MT_TYPES.shell}, {
+    local shell = GetShellOfClass(cls)
+    if shell == nil then
+        shell = setmetatable({__type = OOP_MT_TYPES.shell}, {
             __index = function(t, k)
                 if k == "new" then
                     return cls.new
@@ -857,11 +845,12 @@ local function CreateClassShell(cls)
             end,
             __metatable = OOP_MT_TYPES.shell
         })
-        cls.__shell = shell
+        cls.shell = shell
         AllCls[shell] = cls
-        return shell
     end
+    return shell
 end
+
 --@endregion
 
 --@region OPP Entry
