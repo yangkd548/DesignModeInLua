@@ -473,6 +473,11 @@ local FuncFormat = "return function(inst, func, ...) local %s = func return %s(i
 local function ExecFormatFunction(inst, member, ...)
     print(string.format("\n\t\t<<<<<<<<<<<<<<<进入方法%s>>>>>>>>>>>>>", GetMemberFullName(member.c, member.n)))
     local temp = loadstring(string.format(FuncFormat, member.n, member.n))
+    local args = {...}
+    print("result: ", member.n, inst, #args, #args > 0 and args[1])
+    for i = 1, #args do
+        print("args - "..i.." :", args[i])
+    end
     local result = temp()(inst, member.v, ...)
     print(string.format("\t\t--------------Leave方法%s---------------\n\n", GetMemberFullName(member.c, member.n)))
     return result
@@ -480,12 +485,12 @@ end
 
 local function ExecMemberFunc(member, inst, cls, ...)
     local result
-    if member.c ~= cls then
+    if member.c == cls then
+        result = ExecFormatFunction(inst, member, ...)    
+    else
         ChangeEnvCls(inst, cls, member.c)
         result = ExecFormatFunction(inst, member, ...)
         ChangeEnvCls(inst, member.c, cls)
-    else
-        result = ExecFormatFunction(inst, member, ...)
     end
     return result
 end
