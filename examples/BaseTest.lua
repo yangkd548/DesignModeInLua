@@ -11,7 +11,7 @@ _M.static.private.endFormatStr = _M.startFormatStr.."\n"
 _M.static.private.count = 0
 _M.private.uid = nil
 
-function _M:ctor()
+function _M.private:ctor()
     self.count = self.count + 1
     self.uid = self.count
 end
