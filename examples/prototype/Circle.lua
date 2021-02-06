@@ -8,6 +8,8 @@ local _M = Class("Circle", super)
 local public = _M.public
 
 function _M:ctor(id)
+    print("1111")
+    local s = self.super
     self.super:ctor(id)
     self._type = self.__name
 end

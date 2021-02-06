@@ -9,14 +9,10 @@ local Square = require("examples.factory.Square")
 
 local _M = Class("ShapeFactory")
 
-function _M.public:CreateShape(typeStr, a, b, c, d)
-    print("长度------： ", typeStr, self == typeStr)
-    print("a:"..(a or "空"))
-    print("b:"..(b or "空"))
-    print("c:"..(c or "空"))
-    print("d:"..(d or "空"))
+function _M.public:CreateShape(typeStr)
     if typeStr == "Circle" then
-        return require("examples.factory.Circle").new()
+        local a = Circle.new()
+        return a
     elseif typeStr == "Rectangle" then
         return Rectangle.new()
     elseif typeStr == "Square" then
