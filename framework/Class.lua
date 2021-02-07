@@ -469,15 +469,22 @@ end
 
 --使用原方法名，方便调试
 --使用loadstring为的是，元方法index获取的k为对应的k
-local FuncFormat = "return function(inst, func, ...) local %s = func return %s(inst, ...) end"
+local FuncFormat = "return function(inst, func, ...) local %s = func; print('...........', %s); return %s(inst, ...); end"
 local function ExecFormatFunction(inst, member, ...)
-    if GetMemberFullName(member.c, member.n) == "ShapeFactory.CreateShape" then
+    if GetMemberFullName(member.c, member.n) == "Circle.ctor" then
+        local args = {...}
+        print("参数数量：", #args)
+        for i=1,#args do
+            print("\t参数打印：", i, args[i])
+        end
         print("-------------")
     end
     print(string.format("\n\t\t<<<<<<<<<<<<<<<进入方法%s>>>>>>>>>>>>>", GetMemberFullName(member.c, member.n)))
-    -- local temp = loadstring(string.format(FuncFormat, member.n, member.n))
-    -- local result = temp()(inst, member.v, ...)
-    local result = member.v(inst, ...)
+    local temp = loadstring(string.format(FuncFormat, member.n, member.n, member.n))
+    local func = temp()
+    func(inst, member.v)
+    local result = temp()(inst, member.v, ...)
+    -- local result = member.v(inst, ...)
     print(string.format("\t\t--------------Leave方法%s---------------\n\n", GetMemberFullName(member.c, member.n)))
     return result
 end
@@ -496,17 +503,17 @@ local function ExecMemberFunc(member, inst, cls, changeEnv, ...)
 end
 
 --获取“:”(冒号)访问的代理方法
-local function GetColonProxy(t, k, func)
+local function GetColonProxy(inst, k, func)
     return function(...)
         -- local args = {...}
-        -- print("进行“:”(冒号)访问的判定：", k, #args, args[1], t)
+        -- print("进行“:”(冒号)访问的判定：", k, #args, args[1], inst)
         -- if args[1] then
-        --     print("----444444----:", args[1].__name, t.__name)
+        --     print("----444444----:", args[1].__name, inst.__name)
         -- end
-        -- if args[1] and args[1] == t then
+        -- if args[1] and args[1] == inst then
             return func(...)
         -- else
-        --     print(string.format("p:%s -- t:%s", args[1].__name, t.__name))
+        --     print(string.format("p:%s -- inst:%s", args[1].__name, inst.__name))
         --     ErrorDotAttemptFunc(k)
         -- end
     end
@@ -516,27 +523,29 @@ end
 --self.super:Function==>转换为self:SuperFuntion
 --inst，是转换后用处理的table
 --t，是发起访问的原始table
-local function GetSuperFuncProxy(t, cls, member, changeEnv)
+local function GetSuperFuncProxy(inst, cls, member, changeEnv)
     local k = member.n
-    print("AAAAAAAAAAAAAAAAA", t, t.__name)
-    return GetColonProxy(t, k,
+    print("AAAAAAAAAAAAAAAAA", inst, inst.__name)
+    return GetColonProxy(inst, k,
         function(...)
             local args = {...}
             table.remove(args, 1)
-            print("222222222222222")
-            return ExecMemberFunc(member, t, cls, changeEnv, unpack(args))
+            print("1111111111111111")
+            return ExecMemberFunc(member, inst, cls, changeEnv, unpack(args))
         end
     )
 end
 
-local function GetFuncProxy(t, cls, member, changeEnv)
+local function GetFuncProxy(inst, cls, member, changeEnv)
     local k = member.n
     print("BBBBBBBBBBBBBBB", type(member.v))
-    return GetColonProxy(t, k, 
+    return GetColonProxy(inst, k, 
         function(...)
             local args = {...}
-            print("11111111111111111", k, #args)
-            return ExecMemberFunc(member, t, cls, changeEnv, ...)
+            table.remove(args, 1)
+            print("222222222222222")
+            return ExecMemberFunc(member, inst, cls, changeEnv, unpack(args))
+            -- return ExecMemberFunc(member, inst, cls, changeEnv, ...)
         end
     )
 end
@@ -692,18 +701,18 @@ local function DoAccessMember(inst, cls, member, changeEnv)
         local CurNoMember = curClsMember == nil
         if IsFunction(member.v) then
             --访问方法的处理
-            if CurNoMember then
-                --前面已经使用了CheckDomain检查了访问域，这里就不用检查了
-                local fullName = GetMemberFullName(cls, k)
-                if fullName == "Circle.ctor" then
-                    print("3333", inst.__name)
-                end
-                print("设置执行“父类的默认方法”:", fullName, inst.__name, cls.__name, inst)
-                return GetSuperFuncProxy(inst, cls, member, changeEnv)
-            else
-                --访问自身的方法，不用走代理，只判断是否使用了“:”冒号
+            -- if CurNoMember then
+            --     --前面已经使用了CheckDomain检查了访问域，这里就不用检查了
+            --     local fullName = GetMemberFullName(cls, k)
+            --     if fullName == "Circle.ctor" then
+            --         print("3333", inst.__name)
+            --     end
+            --     print("设置执行“父类的默认方法”:", fullName, inst.__name, cls.__name, inst)
+            --     return GetSuperFuncProxy(inst, cls, member, changeEnv)
+            -- else
+            --     --访问自身的方法，不用走代理，只判断是否使用了“:”冒号
                 return GetFuncProxy(inst, cls, member, changeEnv)
-            end
+            -- end
         else
             --访问变量的处理
             if CurNoMember then
@@ -719,12 +728,12 @@ local function DoAccessMember(inst, cls, member, changeEnv)
     end
 end
 
-local function DoAccessMemberByNewEnv(inst, cls, member)
-    ChangeEnvCls(inst, cls, member.c, member.n, member, "DoAccessMemberByNewEnv", true)
-    local result = DoAccessMember(inst, member.c, member)
-    ChangeEnvCls(inst, member.c, cls, member.n, member, "DoAccessMemberByNewEnv")
-    return result
-end
+-- local function DoAccessMemberByNewEnv(inst, cls, member)
+--     ChangeEnvCls(inst, cls, member.c, member.n, member, "DoAccessMemberByNewEnv", true)
+--     local result = DoAccessMember(inst, member.c, member)
+--     ChangeEnvCls(inst, member.c, cls, member.n, member, "DoAccessMemberByNewEnv")
+--     return result
+-- end
 
 local function AccessMember(inst, envCls, member, changeEnv, ignoreDomain)
     if member == nil then
@@ -772,7 +781,7 @@ local function CreateSuperProxy(inst, cls, fromK, func)
 
 
 
-                AccessMember(inst, cls, member, true, k == OOP_CTOR_NAME)
+                return AccessMember(inst, envCls, member, true, k == OOP_CTOR_NAME)
             end
         end,
         __newindex = function(t, k)
