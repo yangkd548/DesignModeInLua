@@ -10,3 +10,6 @@ require("patterns.creational.factory.FactoryTest").new():ExecTest()
 require("patterns.creational.abstractFactory.AbstractFactoryTest").new():ExecTest()
 require("patterns.creational.builder.BuilderTest").new():ExecTest()
 require("patterns.creational.prototype.PrototypeTest").new():ExecTest()
+
+require("patterns.structural.adapter.AdapterTest").new():ExecTest()
+require("patterns.structural.bridge.BridgeTest").new():ExecTest()

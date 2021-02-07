@@ -474,7 +474,8 @@ local function ExecFormatFunction(inst, member, ...)
     -- print(string.format("\n\t\t<<<<<<<<<<<<<<<进入方法%s>>>>>>>>>>>>>", GetMemberFullName(member.c, member.n)))
     local temp = loadstring(string.format(FuncFormat, member.n, member.n, member.n))
     local result = temp()(inst, member.v, ...)
-    -- local result = member.v(inst, ...)
+    -- local func = temp()
+    -- local result = func(inst, member.v, ...)
     -- print(string.format("\t\t--------------Leave方法%s---------------\n\n", GetMemberFullName(member.c, member.n)))
     return result
 end
@@ -657,7 +658,6 @@ local function DoAccessMember(t, inst, cls, member)
         --static的方法，也不用提供
         return AccessStaticMember(cls, k)
     else
-        --@TODO 这里有问题！！！
         local curClsMember = rawget(cls, k)
         local CurNoMember = curClsMember == nil
         if IsFunction(member.v) then
@@ -672,7 +672,7 @@ local function DoAccessMember(t, inst, cls, member)
                 end
             end
             --因为curClsMember为空时，由于上面逻辑，可能补充写入，所以还是要用rawget再尝试取一下的；因此下面的逻辑不要优化
-            return rawget(inst, k) or member.v
+            return rawget(inst, k) or GetFilterNull(member.v)
         end
     end
 end
@@ -709,8 +709,6 @@ local function CreateSuperProxy(inst, cls, fromK, func)
                     --禁止通过self.super.PPPP访问变量成员
                     ErrorAttemptSuperVar(super, k)
                 else
-                    --@TODO 这里不应该直接返回ctor，应该返回的是一个代理（对执行进行控制），因为仅在执行的提升和恢复“类身份”
-                    --此处调整inst的层级，仅为通过“:”(冒号)访问的检测
                     return AccessMember(t, inst, envCls, member, k == OOP_CTOR_NAME)
                 end
             end
