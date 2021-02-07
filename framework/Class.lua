@@ -477,7 +477,7 @@ local function ExecFormatFunction(inst, member, ...)
     print(string.format("\n\t\t<<<<<<<<<<<<<<<进入方法%s>>>>>>>>>>>>>", GetMemberFullName(member.c, member.n)))
     -- local temp = loadstring(string.format(FuncFormat, member.n, member.n))
     -- local result = temp()(inst, member.v, ...)
-    member.v(inst, ...)
+    local result = member.v(inst, ...)
     print(string.format("\t\t--------------Leave方法%s---------------\n\n", GetMemberFullName(member.c, member.n)))
     return result
 end
@@ -531,10 +531,11 @@ end
 
 local function GetFuncProxy(t, cls, member, changeEnv)
     local k = member.n
-    print("BBBBBBBBBBBBBBB")
+    print("BBBBBBBBBBBBBBB", type(member.v))
     return GetColonProxy(t, k, 
         function(...)
-            print("11111111111111111")
+            local args = {...}
+            print("11111111111111111", k, #args)
             return ExecMemberFunc(member, t, cls, changeEnv, ...)
         end
     )
