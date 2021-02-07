@@ -5,8 +5,8 @@
 ]]
 require("framework.ImportFrame")
 
-require("examples.singleton.SingletonTest").new():ExecTest()
-require("examples.factory.FactoryTest").new():ExecTest()
-require("examples.abstractFactory.AbstractFactoryTest").new():ExecTest()
-require("examples.builder.BuilderTest").new():ExecTest()
-require("examples.prototype.PrototypeTest").new():ExecTest()
+require("patterns.creational.singleton.SingletonTest").new():ExecTest()
+require("patterns.creational.factory.FactoryTest").new():ExecTest()
+require("patterns.creational.abstractFactory.AbstractFactoryTest").new():ExecTest()
+require("patterns.creational.builder.BuilderTest").new():ExecTest()
+require("patterns.creational.prototype.PrototypeTest").new():ExecTest()
