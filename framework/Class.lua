@@ -77,10 +77,11 @@ end
 --@region OOP base element
 
 --下面是代理table的类型（super用于代理self.super:SuperFunc的代码）
-local OOP_MT_TYPES = {inst = "OOP_inst", shell = "OOP_shell", class = "OOP_class", super = "OOP_super", member = "OOP_member"}
 local OOP_CLS_NAME = "class"
-local OOP_SHELL_NAME = "__shell"
+local OOP_CLASS_NAME = "__name"
 local OOP_CTOR_NAME = "ctor"
+local INNER_MT_TYPES = {inst = "OOP_inst", shell = "OOP_shell", class = "OOP_class", super = "OOP_super", member = "OOP_member"}
+local INNER_CLASS_NAME = "__shell"
 local Null = {__name = "Null"}
 local NullFunc = function()
 end
@@ -228,7 +229,7 @@ end
 
 -- --由cls获取shell
 local function GetShellOfClass(cls)
-    return rawget(cls, OOP_SHELL_NAME)
+    return rawget(cls, INNER_CLASS_NAME)
 end
 
 -- --由Inst获取shell
@@ -379,14 +380,14 @@ local function GetMember(cls, k, member)
         else
             member = CopyMember(member)
             addPropertyFunc(member, k)
-            return setmetatable({__type = OOP_MT_TYPES.member}, {
+            return setmetatable({__type = INNER_MT_TYPES.member}, {
                 __index = function(t, k)
                     return GetMember(cls, k, member)
                 end,
                 __newindex = function(t, k, v)
                     AddMember(cls, k, v, member)
                 end,
-                __metatable = OOP_MT_TYPES.member
+                __metatable = INNER_MT_TYPES.member
             })
         end
     else
@@ -463,21 +464,13 @@ local function ChangeEnvCls(inst, cls, newCls, k, member, index, isChange)
     -- print("-------222------:", member.c.__name.."."..member.n, cls.__name, newCls.__name, isChange and "修改" or "恢复", index)
     rawset(cls, "__metatable", nil)
     setmetatable(inst, newCls)
-    rawset(cls, "__metatable", OOP_MT_TYPES.class)
+    rawset(cls, "__metatable", INNER_MT_TYPES.class)
 end
 
 --使用原方法名，方便调试
 --使用loadstring为的是，元方法index获取的k为对应的k
 local FuncFormat = "return function(inst, func, ...) local %s = func return %s(inst, ...) end"
 local function ExecFormatFunction(inst, member, ...)
-    -- if GetMemberFullName(member.c, member.n) == "Circle.ctor" then
-    --     local args = {...}
-    --     print("参数数量：", #args)
-    --     for i=1,#args do
-    --         print("\t参数打印：", i, args[i])
-    --     end
-    --     print("-------------")
-    -- end
     -- print(string.format("\n\t\t<<<<<<<<<<<<<<<进入方法%s>>>>>>>>>>>>>", GetMemberFullName(member.c, member.n)))
     local temp = loadstring(string.format(FuncFormat, member.n, member.n, member.n))
     local result = temp()(inst, member.v, ...)
@@ -502,23 +495,18 @@ end
 --获取“:”(冒号)访问的代理方法
 local function GetColonProxy(inst, k, func)
     return function(...)
-        -- local args = {...}
-        -- print("进行“:”(冒号)访问的判定：", k, #args, args[1], inst)
-        -- if args[1] then
-        --     print("----444444----:", args[1].__name, inst.__name)
-        -- end
-        -- if args[1] and args[1] == inst then
+        local args = {...}
+        if args[1] and args[1] == inst then
             return func(...)
-        -- else
-        --     print(string.format("p:%s -- inst:%s", args[1].__name, inst.__name))
-        --     ErrorDotAttemptFunc(k)
-        -- end
+        else
+            ErrorDotAttemptFunc(k)
+        end
     end
 end
 
-local function GetFuncProxy(inst, cls, member)
+local function GetFuncProxy(t, inst, cls, member)
     local k = member.n
-    return GetColonProxy(inst, k, 
+    return GetColonProxy(t, k, 
         function(...)
             local args = {...}
             table.remove(args, 1)
@@ -559,7 +547,6 @@ end
 local function ExecCtor(inst, cls, ...)
     --面向inst的class是__shell(壳)
     rawset(inst, OOP_CLS_NAME, GetShellOfClass(cls))
-    -- print("33333333333333333")
     local member = GetNearCtor(cls)
     ExecMemberFunc(member, inst, cls, ...)
     return inst
@@ -578,7 +565,7 @@ end
 local function CreateLua(cls, ...)
     CheckAbstract(cls)
     --为inst实例，设置元表，以便在运行阶段，实现OOP
-    local inst = setmetatable({__type = OOP_MT_TYPES.inst}, cls)
+    local inst = setmetatable({__type = INNER_MT_TYPES.inst}, cls)
     return ExecCtor(inst, cls, ...)
 end
 
@@ -631,9 +618,6 @@ local function CheckDomain(member, cls)
     if member == nil then return false end
     local k = member.n
     local funcCls = member.c
-    -- if GetMemberFullName(cls, k) == "Circle._id" then
-    --     print("222222----")
-    -- end
     -- print("检查访问域:", GetMemberFullName(cls, k))
     if IsSameClass(cls, funcCls) then
         -- print("是当前类的方法，无访问域限制：", k)
@@ -663,7 +647,7 @@ local function CopyValue(val)
     end
 end
 
-local function DoAccessMember(inst, cls, member)
+local function DoAccessMember(t, inst, cls, member)
     local k = member.n
     if member.t == MemberType.set then
         ErrorGet(cls, k)
@@ -677,8 +661,7 @@ local function DoAccessMember(inst, cls, member)
         local curClsMember = rawget(cls, k)
         local CurNoMember = curClsMember == nil
         if IsFunction(member.v) then
-            --访问自身的方法，不用走代理，只判断是否使用了“:”冒号
-            return GetFuncProxy(inst, cls, member)
+            return GetFuncProxy(t, inst, cls, member)
         else
             --访问变量的处理
             if CurNoMember then
@@ -694,19 +677,13 @@ local function DoAccessMember(inst, cls, member)
     end
 end
 
-local function AccessMember(inst, envCls, member, ignoreDomain)
+local function AccessMember(t, inst, envCls, member, ignoreDomain)
     --增加：特定非member类型（暂时只支持string和number类型），直接返回（常用的有__name）
     if type(member) == "string" or type(member) == "number" then
         return member
     else
-        --self:Function访问自身方法 和 self.super:Function访问，需要先检查访问域
-        --self:Function调用子类覆盖方法时，忽略检查访问域
         if ignoreDomain or CheckDomain(member, envCls) then
-            --提升“类身份”后，再进行访问域判定
-            --返回的方法，就可以执行了
-            --返回代理，是为了对“执行方法”进行“后处理”
-            --执行什么“后处理”呢？ 提升“类身份”和“恢复类身份”
-            return DoAccessMember(inst, envCls, member)
+            return DoAccessMember(t, inst, envCls, member)
         end
     end
 end
@@ -717,11 +694,13 @@ local function CreateSuperProxy(inst, cls, fromK, func)
     local envCls = cls
     --@desc 因为调用super的方法，必须跟当前所在的方法同名，所以可以通过所在方法的方法名，找到最近的super类
     local super = GetFuncSuper(cls, fromK)
-    return setmetatable({__type = OOP_MT_TYPES.super}, {
+    return setmetatable({__type = INNER_MT_TYPES.super}, {
         __index = function(t, k)
-            --super方法，只允许在同名方法中进行访问！！！
             if k == OOP_CTOR_NAME and fromK ~= k then
+                --super方法，只允许在同名方法中进行访问！！！
                 ErrorAttemptCtor(envCls, k)
+            elseif k == OOP_CLASS_NAME then
+                return GetShellOfInst(inst).__name
             else
                 local member = super[k]
                 if member == nil then
@@ -732,20 +711,20 @@ local function CreateSuperProxy(inst, cls, fromK, func)
                 else
                     --@TODO 这里不应该直接返回ctor，应该返回的是一个代理（对执行进行控制），因为仅在执行的提升和恢复“类身份”
                     --此处调整inst的层级，仅为通过“:”(冒号)访问的检测
-                    return AccessMember(inst, envCls, member, k == OOP_CTOR_NAME)
+                    return AccessMember(t, inst, envCls, member, k == OOP_CTOR_NAME)
                 end
             end
         end,
         __newindex = function(t, k)
             ErrorAssignSuperMember(envCls, super, k)
         end,
-        __metatable = OOP_MT_TYPES.super
+        __metatable = INNER_MT_TYPES.super
     })
 end
 
 --实例对象，访问成员的处理
 --@desc cls是内部的class，用于实例inst，“访问成员”（function、set、get、variable）
-local function CreateInstAccessor(cls)
+local function CreateSelfProxy(cls)
     --调用阶段（使用self或外部实例调用）
     function cls.__index(t, k)
         if k == OOP_CTOR_NAME then
@@ -753,7 +732,7 @@ local function CreateInstAccessor(cls)
         elseif k == "dtor" then
             --@TODO dtor的设计，还需要深入思考
             return cls.dtor
-        elseif k == "__name" then
+        elseif k == OOP_CLASS_NAME then
             return GetShellOfInst(t).__name
         elseif k == "super" then
             local funcTbl = debug.getinfo(2)
@@ -767,14 +746,14 @@ local function CreateInstAccessor(cls)
                 --GetNearFunc已按照合适访问域，查找，所以不用进行访问域判定
                 if newMember then
                     --此处调整inst的层级，仅为通过“:”(冒号)访问的检测
-                    return AccessMember(t, cls, newMember, true)
+                    return AccessMember(t, t, cls, newMember, true)
                 end
             end
-            local member = cls[k] 
+            local member = cls[k]
             if member == nil then
                 ErrorNoExist(cls, k)
             else
-                return AccessMember(t, cls, member)
+                return AccessMember(t, t, cls, member)
             end
         end
     end
@@ -817,10 +796,10 @@ end
 
 --实现定义阶段，实现OOP
 --@desc shell是对外的class，用于shell向cls，“添加成员”（function、set、get、variable）
-local function CreateClassShell(cls)
+local function CreateClassProxy(cls)
     local shell = GetShellOfClass(cls)
     if shell == nil then
-        shell = setmetatable({__type = OOP_MT_TYPES.shell}, {
+        shell = setmetatable({__type = INNER_MT_TYPES.shell}, {
             __index = function(t, k)
                 if k == "new" then
                     return cls.new
@@ -831,7 +810,7 @@ local function CreateClassShell(cls)
                 elseif k == "__ctype" then
                     --兼容C写的lua，在Class会取这个字段
                     return nil
-                elseif k == "__name" then
+                elseif k == OOP_CLASS_NAME then
                     --临时兼容，通过__name请求类名
                     return cls.__name
                 else
@@ -865,10 +844,10 @@ local function CreateClassShell(cls)
             __len = function()
                 return table.len(cls)
             end,
-            __metatable = OOP_MT_TYPES.shell
+            __metatable = INNER_MT_TYPES.shell
         })
         --cls的属性，自身找不到，会去找super的成员，所以需要用rawset和rawget存取shell
-        rawset(cls, OOP_SHELL_NAME, shell)
+        rawset(cls, INNER_CLASS_NAME, shell)
         AllCls[shell] = cls
     end
     return shell
@@ -881,8 +860,8 @@ end
 local function SetClassProperties(cls, name, createFunc, type)
     cls.__name = name
     cls.__ctype = type
-    cls.__type = OOP_MT_TYPES.class
-    cls.__metatable = OOP_MT_TYPES.class
+    cls.__type = INNER_MT_TYPES.class
+    cls.__metatable = INNER_MT_TYPES.class
     cls.ctor = {c = cls, v = NullFunc, n = OOP_CTOR_NAME, t = DomainType.protected}
     SetNewFunc(cls, createFunc)
 end
@@ -918,8 +897,8 @@ function Class(name, super)
         SetClassProperties(cls, name, CreateLua, 2)
         --类继承关系，指向真实cls
         setmetatable(cls, {__index = superCls or Null})
-        CreateInstAccessor(cls)
-        cls = CreateClassShell(cls)
+        CreateSelfProxy(cls)
+        cls = CreateClassProxy(cls)
     end
     return cls
 end
