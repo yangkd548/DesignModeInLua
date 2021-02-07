@@ -79,7 +79,7 @@ end
 --下面是代理table的类型（super用于代理self.super:SuperFunc的代码）
 local OOP_MT_TYPES = {inst = "OOP_inst", shell = "OOP_shell", class = "OOP_class", super = "OOP_super", member = "OOP_member"}
 local OOP_CLS_NAME = "class"
-local OOP_SHELL_NAME = "shell"
+local OOP_SHELL_NAME = "__shell"
 local OOP_CTOR_NAME = "ctor"
 local Null = {__name = "Null"}
 local NullFunc = function()
@@ -409,9 +409,8 @@ end
 --获取super成员 相关
 
 local function GetNearFunc(k, cls, super)
-    local cur = cls
     while true do
-        local member = rawget(cur, k)
+        local member = rawget(cls, k)
         if member ~= nil then
             --只能找public和protected的方法
             if member.d == DomainType.private then
@@ -420,8 +419,8 @@ local function GetNearFunc(k, cls, super)
                 return member
             end
         end
-        cur = GetSuperCls(cur)
-        if cur == super then
+        cls = GetSuperCls(cls)
+        if cls == super then
             return nil
         end
     end
@@ -461,7 +460,7 @@ end
 
 local function ChangeEnvCls(inst, cls, newCls, k, member, index, isChange)
     --先关闭当前cls的mt，修改cls并执行方法，然后再恢复cls
-    print("-------222------:", member.c.__name.."."..member.n, cls.__name, newCls.__name, isChange and "修改" or "恢复", index)
+    -- print("-------222------:", member.c.__name.."."..member.n, cls.__name, newCls.__name, isChange and "修改" or "恢复", index)
     rawset(cls, "__metatable", nil)
     setmetatable(inst, newCls)
     rawset(cls, "__metatable", OOP_MT_TYPES.class)
@@ -469,34 +468,32 @@ end
 
 --使用原方法名，方便调试
 --使用loadstring为的是，元方法index获取的k为对应的k
-local FuncFormat = "return function(inst, func, ...) local %s = func; print('...........', %s); return %s(inst, ...); end"
+local FuncFormat = "return function(inst, func, ...) local %s = func return %s(inst, ...) end"
 local function ExecFormatFunction(inst, member, ...)
-    if GetMemberFullName(member.c, member.n) == "Circle.ctor" then
-        local args = {...}
-        print("参数数量：", #args)
-        for i=1,#args do
-            print("\t参数打印：", i, args[i])
-        end
-        print("-------------")
-    end
-    print(string.format("\n\t\t<<<<<<<<<<<<<<<进入方法%s>>>>>>>>>>>>>", GetMemberFullName(member.c, member.n)))
+    -- if GetMemberFullName(member.c, member.n) == "Circle.ctor" then
+    --     local args = {...}
+    --     print("参数数量：", #args)
+    --     for i=1,#args do
+    --         print("\t参数打印：", i, args[i])
+    --     end
+    --     print("-------------")
+    -- end
+    -- print(string.format("\n\t\t<<<<<<<<<<<<<<<进入方法%s>>>>>>>>>>>>>", GetMemberFullName(member.c, member.n)))
     local temp = loadstring(string.format(FuncFormat, member.n, member.n, member.n))
-    local func = temp()
-    func(inst, member.v)
     local result = temp()(inst, member.v, ...)
     -- local result = member.v(inst, ...)
-    print(string.format("\t\t--------------Leave方法%s---------------\n\n", GetMemberFullName(member.c, member.n)))
+    -- print(string.format("\t\t--------------Leave方法%s---------------\n\n", GetMemberFullName(member.c, member.n)))
     return result
 end
 
-local function ExecMemberFunc(member, inst, cls, changeEnv, ...)
+local function ExecMemberFunc(member, inst, cls, ...)
     local result
-    if changeEnv or cls ~= member.c then
-        ChangeEnvCls(inst, cls, member.c, member.n, member, "ExecMemberFunc", true)
+    if cls ~= member.c then
+        ChangeEnvCls(inst, cls, member.c, member.n, member, "func", true)
         result = ExecFormatFunction(inst, member, ...)
-        ChangeEnvCls(inst, member.c, cls, member.n, member, "ExecMemberFunc")
+        ChangeEnvCls(inst, member.c, cls, member.n, member, "func")
     else
-        print("------未变更envCls-------:"..member.n, cls.__name)
+        -- print("------未变更envCls-------:"..member.n, cls.__name)
         result = ExecFormatFunction(inst, member, ...)
     end
     return result
@@ -519,33 +516,13 @@ local function GetColonProxy(inst, k, func)
     end
 end
 
---self:Function==>转换为self:SuperFunction（父类方法访问域：public和private）
---self.super:Function==>转换为self:SuperFuntion
---inst，是转换后用处理的table
---t，是发起访问的原始table
-local function GetSuperFuncProxy(inst, cls, member, changeEnv)
+local function GetFuncProxy(inst, cls, member)
     local k = member.n
-    print("AAAAAAAAAAAAAAAAA", inst, inst.__name)
-    return GetColonProxy(inst, k,
-        function(...)
-            local args = {...}
-            table.remove(args, 1)
-            print("1111111111111111")
-            return ExecMemberFunc(member, inst, cls, changeEnv, unpack(args))
-        end
-    )
-end
-
-local function GetFuncProxy(inst, cls, member, changeEnv)
-    local k = member.n
-    print("BBBBBBBBBBBBBBB", type(member.v))
     return GetColonProxy(inst, k, 
         function(...)
             local args = {...}
             table.remove(args, 1)
-            print("222222222222222")
-            return ExecMemberFunc(member, inst, cls, changeEnv, unpack(args))
-            -- return ExecMemberFunc(member, inst, cls, changeEnv, ...)
+            return ExecMemberFunc(member, inst, cls, unpack(args))
         end
     )
 end
@@ -582,9 +559,9 @@ end
 local function ExecCtor(inst, cls, ...)
     --面向inst的class是__shell(壳)
     rawset(inst, OOP_CLS_NAME, GetShellOfClass(cls))
-    print("33333333333333333")
+    -- print("33333333333333333")
     local member = GetNearCtor(cls)
-    ExecMemberFunc(member, inst, cls, false, ...)
+    ExecMemberFunc(member, inst, cls, ...)
     return inst
 end
 
@@ -654,20 +631,20 @@ local function CheckDomain(member, cls)
     if member == nil then return false end
     local k = member.n
     local funcCls = member.c
-    if GetMemberFullName(cls, k) == "Circle._id" then
-        print("222222----")
-    end
-    print("检查访问域:", GetMemberFullName(cls, k))
+    -- if GetMemberFullName(cls, k) == "Circle._id" then
+    --     print("222222----")
+    -- end
+    -- print("检查访问域:", GetMemberFullName(cls, k))
     if IsSameClass(cls, funcCls) then
-        print("是当前类的方法，无访问域限制：", k)
+        -- print("是当前类的方法，无访问域限制：", k)
     else
         local domain = member.d
         if IsExtendRelation(cls, funcCls) then
             DisablePrivate(domain, funcCls, k)
-            print("不是private方法，可以访问：", k)
+            -- print("不是private方法，可以访问：", k)
         else
             AllowPublic(domain, funcCls, k)
-            print("外部访问，public方法可以访问：", k)
+            -- print("外部访问，public方法可以访问：", k)
         end
     end
     return true
@@ -686,7 +663,7 @@ local function CopyValue(val)
     end
 end
 
-local function DoAccessMember(inst, cls, member, changeEnv)
+local function DoAccessMember(inst, cls, member)
     local k = member.n
     if member.t == MemberType.set then
         ErrorGet(cls, k)
@@ -700,19 +677,8 @@ local function DoAccessMember(inst, cls, member, changeEnv)
         local curClsMember = rawget(cls, k)
         local CurNoMember = curClsMember == nil
         if IsFunction(member.v) then
-            --访问方法的处理
-            -- if CurNoMember then
-            --     --前面已经使用了CheckDomain检查了访问域，这里就不用检查了
-            --     local fullName = GetMemberFullName(cls, k)
-            --     if fullName == "Circle.ctor" then
-            --         print("3333", inst.__name)
-            --     end
-            --     print("设置执行“父类的默认方法”:", fullName, inst.__name, cls.__name, inst)
-            --     return GetSuperFuncProxy(inst, cls, member, changeEnv)
-            -- else
-            --     --访问自身的方法，不用走代理，只判断是否使用了“:”冒号
-                return GetFuncProxy(inst, cls, member, changeEnv)
-            -- end
+            --访问自身的方法，不用走代理，只判断是否使用了“:”冒号
+            return GetFuncProxy(inst, cls, member)
         else
             --访问变量的处理
             if CurNoMember then
@@ -728,30 +694,19 @@ local function DoAccessMember(inst, cls, member, changeEnv)
     end
 end
 
--- local function DoAccessMemberByNewEnv(inst, cls, member)
---     ChangeEnvCls(inst, cls, member.c, member.n, member, "DoAccessMemberByNewEnv", true)
---     local result = DoAccessMember(inst, member.c, member)
---     ChangeEnvCls(inst, member.c, cls, member.n, member, "DoAccessMemberByNewEnv")
---     return result
--- end
-
-local function AccessMember(inst, envCls, member, changeEnv, ignoreDomain)
-    if member == nil then
-        ErrorNoExist(envCls, member.n)
+local function AccessMember(inst, envCls, member, ignoreDomain)
+    --增加：特定非member类型（暂时只支持string和number类型），直接返回（常用的有__name）
+    if type(member) == "string" or type(member) == "number" then
+        return member
     else
-        --增加：特定非member类型（暂时只支持string和number类型），直接返回（常用的有__name）
-        if type(member) == "string" or type(member) == "number" then
-            return member
-        else
-            --self:Function访问自身方法 和 self.super:Function访问，需要先检查访问域
-            --self:Function调用子类覆盖方法时，忽略检查访问域
-            if ignoreDomain or CheckDomain(member, envCls) then
-                --提升“类身份”后，再进行访问域判定
-                --返回的方法，就可以执行了
-                --返回代理，是为了对“执行方法”进行“后处理”
-                --执行什么“后处理”呢？ 提升“类身份”和“恢复类身份”
-                return DoAccessMember(inst, envCls, member, changeEnv)
-            end
+        --self:Function访问自身方法 和 self.super:Function访问，需要先检查访问域
+        --self:Function调用子类覆盖方法时，忽略检查访问域
+        if ignoreDomain or CheckDomain(member, envCls) then
+            --提升“类身份”后，再进行访问域判定
+            --返回的方法，就可以执行了
+            --返回代理，是为了对“执行方法”进行“后处理”
+            --执行什么“后处理”呢？ 提升“类身份”和“恢复类身份”
+            return DoAccessMember(inst, envCls, member)
         end
     end
 end
@@ -764,24 +719,21 @@ local function CreateSuperProxy(inst, cls, fromK, func)
     local super = GetFuncSuper(cls, fromK)
     return setmetatable({__type = OOP_MT_TYPES.super}, {
         __index = function(t, k)
-            local member = super[k]
-            --禁止通过self.super.PPPP访问变量成员
-            -- if member.t == nil and not IsFunction(member.v) then
-            --     ErrorAttemptSuperVar(super, k)
-            -- end
             --super方法，只允许在同名方法中进行访问！！！
             if k == OOP_CTOR_NAME and fromK ~= k then
                 ErrorAttemptCtor(envCls, k)
             else
-                --@TODO 这里不应该直接返回ctor，应该返回的是一个代理（对执行进行控制），因为仅在执行的提升和恢复“类身份”
-                --此处调整inst的层级，仅为通过“:”(冒号)访问的检测
-                if type(member) == "table" and member.n == "ctor" then
-                    print("--------------8888", member.n)
+                local member = super[k]
+                if member == nil then
+                    ErrorNoExist(cls, k)
+                elseif member.t == nil and not IsFunction(member.v) then
+                    --禁止通过self.super.PPPP访问变量成员
+                    ErrorAttemptSuperVar(super, k)
+                else
+                    --@TODO 这里不应该直接返回ctor，应该返回的是一个代理（对执行进行控制），因为仅在执行的提升和恢复“类身份”
+                    --此处调整inst的层级，仅为通过“:”(冒号)访问的检测
+                    return AccessMember(inst, envCls, member, k == OOP_CTOR_NAME)
                 end
-
-
-
-                return AccessMember(inst, envCls, member, true, k == OOP_CTOR_NAME)
             end
         end,
         __newindex = function(t, k)
@@ -801,6 +753,8 @@ local function CreateInstAccessor(cls)
         elseif k == "dtor" then
             --@TODO dtor的设计，还需要深入思考
             return cls.dtor
+        elseif k == "__name" then
+            return GetShellOfInst(t).__name
         elseif k == "super" then
             local funcTbl = debug.getinfo(2)
             --@desc 找到 合适的super类，进行代理和提升
@@ -813,18 +767,15 @@ local function CreateInstAccessor(cls)
                 --GetNearFunc已按照合适访问域，查找，所以不用进行访问域判定
                 if newMember then
                     --此处调整inst的层级，仅为通过“:”(冒号)访问的检测
-                    if type(newMember) == "table" and newMember.n == "DoExecTest" then
-                        print("--------------8888", newMember.n)
-                    end
-                    return AccessMember(t, cls, newMember, true, true)
+                    return AccessMember(t, cls, newMember, true)
                 end
             end
-            local envCls = cls
-            local member = cls[k]
-            if type(member) == "table" and member.n == "DoExecTest" then
-                print("--------------8888", member.n)
+            local member = cls[k] 
+            if member == nil then
+                ErrorNoExist(cls, k)
+            else
+                return AccessMember(t, cls, member)
             end
-            return AccessMember(t, envCls, member)
         end
     end
 
