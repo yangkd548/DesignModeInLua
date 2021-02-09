@@ -15,7 +15,7 @@ function table.indexof(tbl, value)
     end
 end
 
-function table.copyTable(from, to)
+function table.copy(from, to)
     if type(from) ~= "table" or (to ~= nil and type(to) ~= "table") then
         error("The param of 'copyTable' is not a table.")
     end
@@ -27,6 +27,8 @@ function table.copyTable(from, to)
     end
     return to
 end
+
+
 
 function table.len(tbl)
     if type(tbl) ~= "table" then

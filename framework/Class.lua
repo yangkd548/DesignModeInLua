@@ -123,6 +123,9 @@ end
 local function ErrorAbstract(cls, level)
     error(string.format("Abstract class (%s) cannot be instantiated.", GetClassName(cls)), level or 4)
 end
+local function ErrorCopyInst(cls, level)
+    error(string.format("This class (%s) is singleton, so copies cannot be made.", cls.__name), level or 3)
+end
 
 --成员定义 相关
 local function ErrorRepeatQualifier(k, tbl, v, level)--修饰符重复
@@ -281,7 +284,7 @@ local function IsKeyword(k)
 end
 
 local function CopyMember(member)
-    return member and table.copyTable(member) or {}
+    return member and table.copy(member) or {}
 end
 
 local function DoSetMemberValue(member, cls, k, v)
@@ -637,15 +640,7 @@ end
 
 --暂时使用“浅拷贝”，现在看，是满足需求的
 local function CopyValue(val)
-    if type(val) == "table" then
-        local copy = {}
-        for i, v in pairs(val) do
-            copy[i] = v
-        end
-        return copy
-    else
-        return val
-    end
+    return table.copy(val)
 end
 
 local function DoAccessMember(t, inst, cls, member)
@@ -685,6 +680,18 @@ local function AccessMember(t, inst, envCls, member, ignoreDomain)
         if ignoreDomain or CheckDomain(member, envCls) then
             return DoAccessMember(t, inst, envCls, member)
         end
+    end
+end
+
+--提供Class的实例的拷贝功能
+local function CopyInst(inst)
+    local cls = GetClassOfInst(inst)
+    local inst = table.copy(inst)
+    if cls.singleton then
+        ErrorCopyInst(cls)
+    else
+        local copy = table.copy(inst)
+        return setmetatable(copy, cls)
     end
 end
 
@@ -736,6 +743,8 @@ local function CreateSelfProxy(cls)
             local funcTbl = debug.getinfo(2)
             --@desc 找到 合适的super类，进行代理和提升
             return CreateSuperProxy(t, cls, funcTbl.name or OOP_CTOR_NAME, funcTbl.func)
+        elseif k == "__copy" then
+            return CopyInst(t)
         else
             local oriCls = GetClassOfInst(t)
             if oriCls ~= cls then

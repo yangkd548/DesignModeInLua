@@ -27,9 +27,8 @@ function public:Draw()
 end
 
 function public:Clone()
-    --@TODO 实现业务层面的拷贝，看来需要在框架层，提供一个“深拷贝”和一个“浅拷贝”的工具方法
-    --@TODO 临时直接返回当前实例
-    return self
+    --@使用了Class模块，为其实例，提供的浅拷贝功能
+    return self.__copy
 end
 
 return _M
