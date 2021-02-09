@@ -3,7 +3,9 @@
     author:DylanYang
     time:2021-02-09 17:19:26
 ]]
-local _M = Class("ShapeDecorator")
+--Interface of Decorator and Be decorations is Same.
+local interface = require("patterns.structural.decorator.Shape")
+local _M = Class("ShapeDecorator", interface)
 _M.shape = nil
 
 function _M:ctor(shape)
