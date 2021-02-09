@@ -3,10 +3,10 @@
     author:DylanYang
     time:2021-02-07 17:11:40
 ]]
-local VlcPlayer = require("patterns.structural.adapter.VlcPlayer")
-local Mp4Player = require("patterns.structural.adapter.Mp4Player")
+local VlcPlayer = require("patterns.structural.adapter.cainiao.VlcPlayer")
+local Mp4Player = require("patterns.structural.adapter.cainiao.Mp4Player")
 
-local super = require("patterns.structural.adapter.MediaPlayer")
+local super = require("patterns.structural.adapter.cainiao.MediaPlayer")
 local _M = Class("MediaAdapter", super)
 local public = _M.public
 

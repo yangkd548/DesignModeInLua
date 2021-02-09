@@ -132,7 +132,7 @@ local function ErrorRepeatQualifier(k, tbl, v, level)--修饰符重复
     error(string.format("attempt to repeat set keyward '%s' (existing：%s).", k, key), level or 4)
 end
 local function ErrorDefineKeyword(k, level)
-    error(string.format("attempt to use 'keyword' (%s) for member's name.", k), level or 5)
+    error(string.format("attempt to use 'keyword' (%s) for member's name.", k), level or 4)
 end
 local function ErrorForbid__Property(k, level)
     error(string.format("The name (%s) of member beginning with '__' are forbidden to use.", k), level or 3)
@@ -179,7 +179,7 @@ end
 
 --成员覆盖 相关
 local function ErrorCoverCurClassMember(cls, k, level)
-    error(string.format("The member (%s) of the current class is repeatedly defined", GetMemberFullName(cls, k)), level or 5)
+    error(string.format("The member (%s) of the current class is repeatedly defined.", GetMemberFullName(cls, k)), level or 5)
 end
 local function ErrorCoverSuperPrivateMember(k, superCls, curCls, level)
     error(string.format("This private member (%s) already exists in the '%s' (cur:'%s'), cannot be repeatedly defined.", k, GetClassName(superCls), GetClassName(curCls)), level or 5)

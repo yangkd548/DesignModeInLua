@@ -3,7 +3,7 @@
     author:DylanYang
     time:2021-02-07 17:08:43
 ]]
-local super = require("patterns.structural.adapter.AdvancedMediaPlayer")
+local super = require("patterns.structural.adapter.cainiao.AdvancedMediaPlayer")
 local _M = Class("Mp4Player")
 local public = _M.public
 

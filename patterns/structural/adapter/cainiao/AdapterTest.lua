@@ -3,7 +3,7 @@
     author:DylanYang
     time:2021-02-07 16:29:46
 ]]
-local AudioPlayer = require("patterns.structural.adapter.AudioPlayer")
+local AudioPlayer = require("patterns.structural.adapter.cainiao.AudioPlayer")
 
 local super = require("patterns.BaseTest")
 local _M = Class("AdapterTest", super)

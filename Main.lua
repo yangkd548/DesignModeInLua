@@ -11,5 +11,6 @@ require("patterns.creational.abstractFactory.AbstractFactoryTest").new():ExecTes
 require("patterns.creational.builder.BuilderTest").new():ExecTest()
 require("patterns.creational.prototype.PrototypeTest").new():ExecTest()
 
-require("patterns.structural.adapter.AdapterTest").new():ExecTest()
+require("patterns.structural.adapter.cainiao.AdapterTest").new():ExecTest()
+require("patterns.structural.adapter.chart.AdapterTest").new():ExecTest()
 require("patterns.structural.bridge.BridgeTest").new():ExecTest()

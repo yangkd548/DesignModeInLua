@@ -3,9 +3,9 @@
     author:DylanYang
     time:2021-02-07 17:45:08
 ]]
-local MediaAdapter = require("patterns.structural.adapter.MediaAdapter")
+local MediaAdapter = require("patterns.structural.adapter.cainiao.MediaAdapter")
 
-local super = require("patterns.structural.adapter.MediaPlayer")
+local super = require("patterns.structural.adapter.cainiao.MediaPlayer")
 local _M = Class("AudioPlayer", super)
 
 _M.mediaAdapter = nil

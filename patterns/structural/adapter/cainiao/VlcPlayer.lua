@@ -3,7 +3,7 @@
     author:DylanYang
     time:2021-02-07 17:03:17
 ]]
-local super = require("patterns.structural.adapter.AdvancedMediaPlayer")
+local super = require("patterns.structural.adapter.cainiao.AdvancedMediaPlayer")
 local _M = Class("VlcPlayer", super)
 
 local public = _M.public
