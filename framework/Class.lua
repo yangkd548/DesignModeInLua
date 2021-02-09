@@ -704,7 +704,7 @@ local function CreateSuperProxy(inst, cls, fromK, func)
             else
                 local member = super[k]
                 if member == nil then
-                    ErrorNoExist(cls, k)
+                    ErrorNoExist(cls, k, 3)
                 elseif member.t == nil and not IsFunction(member.v) then
                     --禁止通过self.super.PPPP访问变量成员
                     ErrorAttemptSuperVar(super, k)
@@ -762,7 +762,7 @@ local function CreateSelfProxy(cls)
         else
             local member = cls[k]
             if member == nil then
-                ErrorNoExist(cls, k)
+                ErrorNoExist(cls, k, 3)
             else
                 --@TODO 这里也需要整理
                 if CheckDomain(member, cls) then
