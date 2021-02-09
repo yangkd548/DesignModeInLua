@@ -150,7 +150,7 @@ end
 
 --成员访问 相关
 local function ErrorNoExist(cls, k, level)
-    error(string.format("attempt to call member '%s' (no-exist).", GetMemberFullName(cls, k)), level or 3)
+    error(string.format("attempt to call member '%s' (no-exist).", GetMemberFullName(cls, k)), level or 5)
 end
 local function ErrorCallPrivate(cls, k, level)
     error(string.format("attempt to call member '%s' (private).", GetMemberFullName(cls, k)), level or 5)
@@ -749,7 +749,7 @@ local function CreateSelfProxy(cls)
             end
             local member = cls[k]
             if member == nil then
-                ErrorNoExist(cls, k)
+                ErrorNoExist(cls, k, 3)
             else
                 return AccessMember(t, t, cls, member)
             end
