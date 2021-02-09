@@ -7,7 +7,7 @@ local super = require("patterns.BaseTest")
 local _M = Class("FacadeTest", super)
 
 function _M.protected:DoExecTest()
-    print("准备开发 Facade Pattern!")
+    -- PageMaker.makeWelcomePage("hyuki@hyuki.com", "welcome.html");
 end
 
 return _M
