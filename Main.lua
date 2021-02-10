@@ -4,6 +4,7 @@
     Time:2020-11-09 16:20:12
 ]]
 require("framework.ImportFrame")
+print(string.format("The current lua version is %s .", _VERSION))
 
 -- require("patterns.creational.singleton.SingletonTest").new():ExecTest()
 -- require("patterns.creational.factory.FactoryTest").new():ExecTest()
@@ -17,4 +18,5 @@ require("framework.ImportFrame")
 -- require("patterns.structural.filter.FilterTest").new():ExecTest()
 -- require("patterns.structural.composite.CompositeTest").new():ExecTest()
 -- require("patterns.structural.decorator.DecoratorTest").new():ExecTest()
-require("patterns.structural.facade.FacadeTest").new():ExecTest()
+-- require("patterns.structural.facade.FacadeTest").new():ExecTest()
+require("patterns.structural.flyweight.FlyweightTest").new():ExecTest()

@@ -40,3 +40,7 @@ function table.len(tbl)
     end
     return len
 end
+
+--Unify the differences in the 'unpack' function in the different versions of Lua.
+unpack = unpack or table.unpack
+table.unpack = unpack

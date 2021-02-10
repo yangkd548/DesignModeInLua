@@ -60,3 +60,10 @@ function handlerPlus(obj, method, ...)
         return method(obj, unpack(args), ...)
     end
 end
+
+function luaVersion()
+    return _VERSION
+end
+
+--Unify the differences in the 'loadstring' function in the different versions of Lua.
+loadstring = loadstring or load
