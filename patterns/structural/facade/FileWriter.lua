@@ -6,6 +6,12 @@
 local _M = Class("FileWriter")
 local public = _M.public
 
+function public:Write()
 
+end
+
+function public:Close()
+
+end
 
 return _M

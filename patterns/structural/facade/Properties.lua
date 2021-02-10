@@ -7,14 +7,15 @@
 local _M = Class("Properties")
 local public = _M.public
 
-_M.porps = {}
+_M.props = {}
 
 function public:Load(fileReader)
     local str = fileReader.string
     --需要从str中解析出来属性，及其数值
-    self.porps[1] = 1
-    self.porps[2] = 2
-    self.porps[3] = 3
+    self.props["hyuki@hyuki.com"] = "Hiroshi Yuki"
+    self.props["hanako@hyuki.com"] = "Hanako Sato"
+    self.props["tomura@hyuki.com"] = "Tomura"
+    self.props["mamoru@hyuki.com"] = "Mamoru Takahashi"
 end
 
 function public:GetProperty(key)

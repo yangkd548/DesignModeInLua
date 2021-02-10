@@ -10,7 +10,7 @@ _M._string = nil
 
 function _M:ctor(filename)
     --
-    self.string = "xxxxxx"
+    self._string = "xxxxxx"
 end
 
 function public.get:string()

@@ -12,12 +12,12 @@ function _M.private:ctor()
 end
 
 function _M.static.public:GetProperties(dbname)
-    local filename = dbname + ".txt";
-    local prop = Properties.new();
-    prop:Load(FileReader.new(filename));
+    local filename = dbname..".txt"
+    local prop = Properties.new()
+    prop:Load(FileReader.new(filename))
     --读取本地文件
     --从文本信息中，获取字段和数值
-    return prop;
+    return prop
 end
 
 return _M

@@ -3,8 +3,9 @@
     author:DylanYang
     time:2021-02-09 21:42:39
 ]]
-local HtmlWriter = require("patterns.structural.facade.HtmlWriter")
 local Database = require("patterns.structural.facade.Database")
+local HtmlWriter = require("patterns.structural.facade.HtmlWriter")
+local FileWriter = require("patterns.structural.facade.FileWriter")
 
 local _M = Class("PageMaker")
 
@@ -13,15 +14,15 @@ function _M.private:ctor()
 end
 
 function _M.static.public:MakeWelcomePage(mailaddr, filename)
-    local mailprop = Database:GetProperties("maildata");
-    local username = mailprop:GetProperty(mailaddr);
-    local writer = HtmlWriter.new(FileWriter.new(filename));
+    local mailprop = Database:GetProperties("maildata")
+    local username = mailprop:GetProperty(mailaddr)
+    local writer = HtmlWriter.new(FileWriter.new(filename))
     writer:SetTitle(string.format("Welcome to %s's page!", username))
-    writer:AddParagraph("欢迎来到" + username + "的主页。");
-    writer:AddParagraph("等着你的邮件哦！");
-    writer:SetMailto(mailaddr, username);
-    writer:Close();
-    print(string.format("%s is created for %s (%s)", filename, mailaddr, username));
+    writer:AddParagraph(string.format("欢迎来到 %s 的主页。", username))
+    writer:AddParagraph("等着你的邮件哦！")
+    writer:SetMailto(mailaddr, username)
+    writer:Close()
+    print(string.format("%s is created for %s (%s)", filename, mailaddr, username))
 end
 
 return _M
