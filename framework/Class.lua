@@ -742,7 +742,6 @@ local function CreateSelfProxy(cls)
             if member == nil then
                 ErrorNoExist(cls, k, 3)
             else
-                --@TODO 这里也需要整理
                 if CheckDomain(member, cls) then
                     if member.r == ReadType.readonly then
                         local funcTbl = debug.getinfo(2)
