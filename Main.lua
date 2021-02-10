@@ -19,4 +19,7 @@ print(string.format("The current lua version is %s .", _VERSION))
 -- require("patterns.structural.composite.CompositeTest").new():ExecTest()
 -- require("patterns.structural.decorator.DecoratorTest").new():ExecTest()
 -- require("patterns.structural.facade.FacadeTest").new():ExecTest()
-require("patterns.structural.flyweight.FlyweightTest").new():ExecTest()
+-- require("patterns.structural.flyweight.FlyweightTest").new():ExecTest()
+require("patterns.structural.proxy.ProxyTest").new():ExecTest()
+
+require("patterns.behavioral.chainOfResponsibility.ChainOfResponsibilityTest").new():ExecTest()
