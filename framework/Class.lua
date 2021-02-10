@@ -121,10 +121,10 @@ end
 
 --实例化 相关
 local function ErrorAbstract(cls, level)
-    error(string.format("Abstract class (%s) cannot be instantiated.", GetClassName(cls)), level or 4)
+    error(string.format("Abstract class (%s) can't be instantiated.", GetClassName(cls)), level or 4)
 end
 local function ErrorCopyInst(cls, level)
-    error(string.format("This class (%s) is singleton, so copies cannot be made.", cls.__name), level or 3)
+    error(string.format("This class (%s) is singleton, so copies can't be made.", cls.__name), level or 4)
 end
 
 --成员定义 相关
@@ -145,7 +145,7 @@ local function ErrorMustFunction(k, level)
 end
 --成员定义重复
 local function ErrorRepeatDefine(cls, k, level)
-    error(string.format("This member (%s) already exists in the '%s', cannot be repeatedly defined.", k, cls.__name), level or 5)
+    error(string.format("This member (%s) already exists in the '%s', can't be repeatedly defined.", k, cls.__name), level or 5)
 end
 local function ErrorCtorProperties(cls, level)
     error(string.format("This member (%s) does not allow to setting properties.", GetMemberFullName(cls, OOP_CTOR_NAME)), level or 5)
@@ -174,7 +174,7 @@ local function ErrorNotStatic(cls, k, level)
     error(string.format("attempt to call member '%s' (not-static).", GetMemberFullName(cls, k)), level or 3)
 end
 local function ErrorModifyInnerFunc(funcName, level)--尝试通过self修改ctor和dtor
-    error(string.format("The '%s' member of class, which cannot be modify directly.", funcName), level or 3)
+    error(string.format("The '%s' member of class, which can't be modify directly.", funcName), level or 3)
 end
 local function ErrorDotAttemptFunc(k, level)--限制只能用“:”(冒号)访问function
     error(string.format("Please use ':' access method (%s).", k), level or 3)
@@ -185,7 +185,7 @@ local function ErrorCoverCurClassMember(cls, k, level)
     error(string.format("The member (%s) of the current class is repeatedly defined.", GetMemberFullName(cls, k)), level or 5)
 end
 local function ErrorCoverSuperPrivateMember(k, superCls, curCls, level)
-    error(string.format("This private member (%s) already exists in the '%s' (cur:'%s'), cannot be repeatedly defined.", k, GetClassName(superCls), GetClassName(curCls)), level or 5)
+    error(string.format("This private member (%s) already exists in the '%s' (cur:'%s'), can't be repeatedly defined.", k, GetClassName(superCls), GetClassName(curCls)), level or 5)
 end
 local function ErrorCoverSuperDiffDoamin(k, superCls, curCls, level)
     error(string.format("This domains of members (%s) in the '%s' and '%s'(cur) are different.", k, GetClassName(superCls), GetClassName(curCls)), level or 5)
@@ -193,7 +193,7 @@ end
 
 --访问基类的成员（读取self.super的ctor和成员） 相关
 local function ErrorAttemptCtor(cls, k, level)
-    error(string.format("Class ctor method cannot be called outside (%s).", GetMemberFullName(cls, k)), level or 3)
+    error(string.format("Class ctor method can't be called outside (%s).", GetMemberFullName(cls, k)), level or 3)
 end
 local function ErrorAttemptSuper(cls, level)
     error(string.format("Access Super directly using 'self.super', not shell (%s).", GetClassName(cls)), level or 3)
@@ -357,7 +357,6 @@ end
 local function AccessStaticMember(cls, k)
     local member = cls[k]
     if member then
-        --@TODO 考虑这里与运行时获取数据的逻辑，进行统一整合
         if member.s == StorageType.static then
             if member.t == MemberType.set then
                 ErrorGet(cls, k)
@@ -398,14 +397,6 @@ local function GetMember(cls, k, member)
     end
 end
 
-local function GetMemberValue(cls, k)
-    local member = rawget(cls, k)
-    if member then
-        --@TODO member统一为table结构，这里的判断就可以省掉了
-        return IsFunction(member) and GetFilterNull(member) or GetFilterNull(member.v)
-    end
-end
-
 --@endregion
 
 --@region get/set class function
@@ -442,20 +433,6 @@ local function GetNearCtor(cls)
         end
     end
     return cls.ctor
-end
-
-local function GetCurFuncCls(cls, k, func)
-    local cur = cls
-    while true do
-        if GetMemberValue(cls, k) == func then
-            return cls
-        end
-        cls = GetSuperCls(cls)
-        if cls == Null then
-            break
-        end
-    end
-    ErrorNoExist(cur, k)
 end
 
 --@endregion
@@ -574,19 +551,12 @@ local function CreateLua(cls, ...)
 end
 
 local SingleInsts = {}
-local function CreateSingle(cls)
-    function cls.get:singleton()
-        return SingleInsts[cls]
-    end
-end
-
 local function SetNewFunc(cls, createFunc)
     --单例类的实例化，也是使用new，再次new不会创建新的实例，此后可以使用 class.singleton 获取了
     cls.new = function(...)
         if cls.singleton then
             if not SingleInsts[cls] then
                 SingleInsts[cls] = createFunc(cls, ...)
-                CreateSingle(cls)
             end
             return SingleInsts[cls]
         else
@@ -697,7 +667,6 @@ end
 
 --统一的self.super调用
 local function CreateSuperProxy(inst, cls, fromK, func)
-    -- local cur = GetCurFuncCls(cls, fromK, func)
     local envCls = cls
     --@desc 因为调用super的方法，必须跟当前所在的方法同名，所以可以通过所在方法的方法名，找到最近的super类
     local super = GetFuncSuper(cls, fromK)
