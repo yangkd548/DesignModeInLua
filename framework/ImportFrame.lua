@@ -5,6 +5,7 @@
     purpose : Import the required framework scripts
 ]]
 require("framework.BaseExtend")
+require("framework.PathExtend")
 require("framework.TableExtend")
 require("framework.StringExtend")
 require("framework.Class")

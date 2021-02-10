@@ -83,8 +83,7 @@ local OOP_CTOR_NAME = "ctor"
 local INNER_MT_TYPES = {inst = "OOP_inst", shell = "OOP_shell", class = "OOP_class", super = "OOP_super", member = "OOP_member"}
 local INNER_CLASS_NAME = "__shell"
 local Null = {__name = "Null"}
-local NullFunc = function()
-end
+local NullFunc = function() end
 local function SetFilterNil(v)
     return v ~= nil and v or Null
 end

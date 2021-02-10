@@ -10,12 +10,21 @@ local public = _M.public
 _M.props = {}
 
 function public:Load(fileReader)
-    local str = fileReader.string
-    --需要从str中解析出来属性，及其数值
-    self.props["hyuki@hyuki.com"] = "Hiroshi Yuki"
-    self.props["hanako@hyuki.com"] = "Hanako Sato"
-    self.props["tomura@hyuki.com"] = "Tomura"
-    self.props["mamoru@hyuki.com"] = "Mamoru Takahashi"
+    -- local str = fileReader.string
+    local str = 
+[[
+hyuki@hyuki.com=Hiroshi Yuki
+hanako@hyuki.com=Hanako Sato
+tomura@hyuki.com=Tomura
+mamoru@hyuki.com=Mamoru Takahashi
+]]
+    local members = string.split(str, "\n")
+    for i, v in pairs(members) do
+        local pairs = string.split(v, "=")
+        if #pairs == 2 then
+            self.props[pairs[1]] = pairs[2]
+        end
+    end
 end
 
 function public:GetProperty(key)

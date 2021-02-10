@@ -6,12 +6,19 @@
 local _M = Class("FileWriter")
 local public = _M.public
 
-function public:Write()
+_M.file = nil
 
+function _M:ctor(filename)
+    local path = string.format("%s/%s", os.GetCurDir(), filename)
+    self.file = io.open(path, "w");
+end
+
+function public:Write(str)
+    self.file:write(str)
 end
 
 function public:Close()
-
+    self.file:close()
 end
 
 return _M

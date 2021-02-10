@@ -22,7 +22,7 @@ function public:SetTitle(title)
 end
 
 function public:AddParagraph(msg)
-    self.writer:Write(string.format("<p></p>\n", msg))
+    self.writer:Write(string.format("<p>%s</p>\n", msg))
 end
 
 function public:SetLink(href, caption)
