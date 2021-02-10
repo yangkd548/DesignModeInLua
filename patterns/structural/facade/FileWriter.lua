@@ -10,7 +10,7 @@ _M.file = nil
 
 function _M:ctor(filename)
     local path = string.format("%s/%s", os.GetCurDir(), filename)
-    self.file = io.open(path, "w");
+    self.file = io.open(path, "w")
 end
 
 function public:Write(str)

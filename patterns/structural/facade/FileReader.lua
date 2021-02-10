@@ -10,7 +10,7 @@ _M._string = nil
 
 function _M:ctor(filename)
     local path = string.format("%s/%s", os.GetCurDir(), filename)
-    local file = io.open(path, "r");
+    local file = io.open(path, "r")
     self._string = file:read("*a")
     file:close()
 end
