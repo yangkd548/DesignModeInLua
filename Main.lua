@@ -23,3 +23,4 @@ print(string.format("The current lua version is %s .", _VERSION))
 require("patterns.structural.proxy.ProxyTest").new():ExecTest()
 
 require("patterns.behavioral.chainOfResponsibility.ChainOfResponsibilityTest").new():ExecTest()
+require("patterns.behavioral.command.CommandTest").new():ExecTest()
