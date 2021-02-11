@@ -14,7 +14,7 @@ end
 
 function public:PlaceOrders()
     for i, v in pairs(self.orderList) do
-        v:Execute();
+        v:Execute()
     end
     self.orderList = {}
 end

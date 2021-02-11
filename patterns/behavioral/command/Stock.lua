@@ -10,7 +10,7 @@ _M.name = "ABC"
 _M.quantity = 10
 
 function public:Buy()
-    print(string.format("Stock [ Name: %s, Quantity: %s ] bought.", self.name, self.quantity));
+    print(string.format("Stock [ Name: %s, Quantity: %s ] bought.", self.name, self.quantity))
 end
 
 function public:Sell()
