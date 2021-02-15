@@ -1,7 +1,7 @@
 --[[
     Module:Main
     Author:DylanYang
-    Time:2020-11-09 16:20:12
+    Time:2021-01-26 16:20:12
 ]]
 require("framework.ImportFrame")
 print(string.format("The current lua version is %s .", _VERSION))
@@ -18,9 +18,10 @@ print(string.format("The current lua version is %s .", _VERSION))
 -- require("patterns.structural.filter.FilterTest").new():ExecTest()
 -- require("patterns.structural.composite.CompositeTest").new():ExecTest()
 -- require("patterns.structural.decorator.DecoratorTest").new():ExecTest()
--- require("patterns.structural.facade.FacadeTest").new():ExecTest()
+require("patterns.structural.facade.FacadeTest").new():ExecTest()
 -- require("patterns.structural.flyweight.FlyweightTest").new():ExecTest()
-require("patterns.structural.proxy.ProxyTest").new():ExecTest()
+-- require("patterns.structural.proxy.ProxyTest").new():ExecTest()
 
-require("patterns.behavioral.chainOfResponsibility.ChainOfResponsibilityTest").new():ExecTest()
-require("patterns.behavioral.command.CommandTest").new():ExecTest()
+-- require("patterns.behavioral.chainOfResponsibility.ChainOfResponsibilityTest").new():ExecTest()
+-- require("patterns.behavioral.command.CommandTest").new():ExecTest()
+require("patterns.behavioral.interpreter.InterPreterTest").new():ExecTest()

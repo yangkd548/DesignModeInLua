@@ -8,8 +8,7 @@ local public = _M.public
 
 _M.file = nil
 
-function _M:ctor(filename)
-    local path = string.format("%s/%s", os.GetCurDir(), filename)
+function _M:ctor(path)
     self.file = io.open(path, "w")
 end
 

@@ -10,14 +10,7 @@ local public = _M.public
 _M.props = {}
 
 function public:Load(fileReader)
-    -- local str = fileReader.string
-    local str = 
-[[
-hyuki@hyuki.com=Hiroshi Yuki
-hanako@hyuki.com=Hanako Sato
-tomura@hyuki.com=Tomura
-mamoru@hyuki.com=Mamoru Takahashi
-]]
+    local str = fileReader.string
     local members = string.split(str, "\n")
     for i, v in pairs(members) do
         local pairs = string.split(v, "=")
