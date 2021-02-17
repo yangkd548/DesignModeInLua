@@ -27,7 +27,7 @@ end
 
 function public:SkipToken(token)
     --token需要字符串，转换成固定大小写
-    if token == self._curToken then
+    if token ~= self._curToken then
         error(string.format("Warning: %s is expected, but %s is found.", token, self._curToken))
     end
     self:NextToken()

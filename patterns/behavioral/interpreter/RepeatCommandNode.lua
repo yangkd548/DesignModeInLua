@@ -3,7 +3,7 @@
     author:DylanYang
     time:2021-02-12 21:44:37
 ]]
-local CommamdListNode = require("patterns.behavioral.interpreter.CommandNode")
+local CommandListNode = require("patterns.behavioral.interpreter.CommandListNode")
 
 local super = require("patterns.behavioral.interpreter.Node")
 local _M = Class("RepeatCommandNode", super)
@@ -16,7 +16,9 @@ function public:Parse(context)
     context:SkipToken("repeat")
     self.number = context.curToken
     context:NextToken()
-    self.cmdListNode = CommamdListNode.new()
+    print("----111-----", CommandListNode)
+    self.cmdListNode = CommandListNode.new()
+    self.cmdListNode:Parse(context)
 end
 
 function public:ToString()

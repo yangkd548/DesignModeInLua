@@ -11,15 +11,28 @@ local public = _M.public
 _M.list = {}
 
 function public:Parse(context)
+    local i = 0
     while true do
         if context.curToken == nil then
             Error("Missing 'end'")
         elseif context.curToken == "end" then
             context:SkipToken("end")
+            break
         else
+            i = i + 1
             local cmdNode = CommandNode.new()
+            cmdNode:Parse(context)
+            table.insert(self.list, cmdNode)
         end
     end
+end
+
+function public:ToString()
+    local str = ""
+    for i, v in pairs(self.list) do
+        str = string.format("%s %s", str, v:ToString())
+    end
+    return str
 end
 
 return _M

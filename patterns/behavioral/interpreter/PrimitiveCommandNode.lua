@@ -10,10 +10,11 @@ _M.name = nil
 
 function public:Parse(context)
     self.name = context.curToken
-    context:SkipToken(self.name)
     if not self.name == "go" and not self.name == "right" and not self.name == "left" then
         ParseException(string.format("%s is undefined.", self.name))
     end
+    --In the case of a formal procedure, this would be the location where the actual original operation was performed.s
+    context:SkipToken(self.name)
 end
 
 function public:ToString()

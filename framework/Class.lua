@@ -3,10 +3,10 @@
     Author:DylanYang
     Time:2020-10-14 16:08:08
 ]]
-require("framework.Readonly")
-require("framework.Bit")
 require("framework.BaseExtend")
 require("framework.TableExtend")
+require("framework.Bit")
+require("framework.Readonly")
 
 --@region import function (考虑提取)
 
@@ -44,8 +44,9 @@ local StorageType =  {default = nil, static = 2}  --------------------作为访�
 local DomainType =  {private = nil, public = 1, protected = 2}    ----访问域，在static和非static都有
 local ReadType =  {default = nil, readonly = 1}  ---------------------仅对MemberType中default起作用
 local MemberType =  {default = nil, set = 1, get = 2} ----------------成员类型，default包含function、variable
+local ValueType = {default = nil, reference = 1}
 
-local MemberProperties = {domain = "d", readonly = "r", static = "s", type = "t", value = "v", name = "n", class = "c"}
+local MemberProperties = {static = "s", domain = "d", readonly = "r", member = "m", value = "v", name = "n", class = "c", vt = "vt"}
 local MemberPropertieTypes = {d = DomainType, r = ReadType, s = StorageType, t = MemberType}
 
 local function GetKeyByValue(tbl, value)
@@ -60,8 +61,9 @@ local ModifyKeyProperty = {
     public = MemberProperties.domain, protected = MemberProperties.domain, private = MemberProperties.domain,
     static = MemberProperties.static,
     readonly = MemberProperties.readonly,
-    set = MemberProperties.type, get = MemberProperties.type,
-    name = MemberProperties.name
+    set = MemberProperties.member, get = MemberProperties.member,
+    name = MemberProperties.name,
+    vt = MemberProperties.vt
 }
 
 local function GetClassName(cls)
@@ -268,7 +270,7 @@ local function AddReadonlyProperty(member, k)
     member.r = ReadType.readonly
 end
 local function AddTypeProperty(member, k)
-    member.t = MemberType[k]
+    member.m = MemberType[k]
 end
 
 local ModifyKeyFunc = {
@@ -296,8 +298,8 @@ end
 
 local function SetMemberValue(member, cls, k, v)
     --get/set成员，必须是function，否则报错
-    if member and (member.t == MemberType.get or member.t == MemberType.set) and not IsFunction(v) then
-        ErrorMustFunction(string.format("%s.%s.%s", cls.__name, GetKeyByValue(MemberType, member.t), k), 5)
+    if member and (member.m == MemberType.get or member.m == MemberType.set) and not IsFunction(v) then
+        ErrorMustFunction(string.format("%s.%s.%s", cls.__name, GetKeyByValue(MemberType, member.m), k), 5)
     end
     DoSetMemberValue(member, cls, k, v)
 end
@@ -357,9 +359,9 @@ local function AccessStaticMember(cls, k)
     local member = cls[k]
     if member then
         if member.s == StorageType.static then
-            if member.t == MemberType.set then
+            if member.m == MemberType.set then
                 ErrorGet(cls, k)
-            elseif member.t == MemberType.get then
+            elseif member.m == MemberType.get then
                 return member.v()
             else
                 return GetFilterNull(member.v)
@@ -608,34 +610,35 @@ end
 
 --暂时使用“浅拷贝”，现在看，是满足需求的
 local function CopyValue(val)
-    return table.copy(val)
+    if val == Null then return val end
+    return IsTable(val) and table.copy(val) or val
 end
 
 local function DoAccessMember(t, inst, cls, member)
     local k = member.n
-    if member.t == MemberType.set then
+    if member.m == MemberType.set then
         ErrorGet(cls, k)
-    elseif member.t == MemberType.get then
+    elseif member.m == MemberType.get then
         return member.v(inst)
     elseif member.s == StorageType.static then
         --static的方法，也不用提供
         return AccessStaticMember(cls, k)
     else
-        local curClsMember = rawget(cls, k)
-        local CurNoMember = curClsMember == nil
+        local curInstMember = rawget(inst, k)
+        local instNoMember = curInstMember == nil
         if IsFunction(member.v) then
             return GetFuncProxy(t, inst, cls, member)
         else
             --访问变量的处理
-            if CurNoMember then
-                if member.s == StorageType.default and member.t == MemberType.default then
+            if instNoMember then
+                if member.s == StorageType.default and member.m == MemberType.default then
                     --只有非static、default的变量，需要拷贝
                     --super的方法，拷贝到子类，就失去了访问super的private成员的权限了，所有不能拷贝方法
                     rawset(inst, k, CopyValue(member.v))
                 end
             end
             --因为curClsMember为空时，由于上面逻辑，可能补充写入，所以还是要用rawget再尝试取一下的；因此下面的逻辑不要优化
-            return rawget(inst, k) or GetFilterNull(member.v)
+            return GetFilterNull(rawget(inst, k) or member.v)
         end
     end
 end
@@ -679,7 +682,7 @@ local function CreateSuperProxy(inst, cls, fromK, func)
                 local member = super[k]
                 if member == nil then
                     ErrorNoExist(cls, k, 3)
-                elseif member.t == nil and not IsFunction(member.v) then
+                elseif member.m == nil and not IsFunction(member.v) then
                     --禁止通过self.super.PPPP访问变量成员
                     ErrorAttemptSuperVar(super, k)
                 else
@@ -748,9 +751,9 @@ local function CreateSelfProxy(cls)
                             ErrorReadOnly(cls, k)
                         end
                     end
-                    if member.t == MemberType.get then
+                    if member.m == MemberType.get then
                         ErrorSet(cls, k)
-                    elseif member.t == MemberType.set then
+                    elseif member.m == MemberType.set then
                         member.v(t, v)
                     elseif member.s == StorageType.static then
                         --static设置类模板的成员的数值

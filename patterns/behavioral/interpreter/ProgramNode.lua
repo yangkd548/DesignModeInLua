@@ -13,12 +13,13 @@ _M.cmdListNode = nil
 
 function public:Parse(context)
     context:SkipToken("program")
+    print("----000-----", CommandListNode)
     self.cmdListNode = CommandListNode.new()
     self.cmdListNode:Parse(context)
 end
 
 function public:ToString()
-    return string.format("[program %s]", self.cmdListNode:ToString())
+    return string.format("[program%s]", self.cmdListNode:ToString())
 end
 
 return _M
