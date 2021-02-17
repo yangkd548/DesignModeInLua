@@ -18,7 +18,7 @@ function public:Parse(context)
 end
 
 function public:ToString()
-    return string.format("[program%s]", self.cmdListNode:ToString())
+    return string.format("[program %s]", self.cmdListNode:ToString())
 end
 
 return _M

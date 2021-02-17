@@ -21,7 +21,7 @@ function public:Parse(context)
 end
 
 function public:ToString()
-    return string.format("[repeat %s%s]", self.number, self.cmdListNode:ToString())
+    return string.format("[repeat %s %s]", self.number, self.cmdListNode:ToString())
 end
 
 return _M

@@ -28,10 +28,11 @@ function public:Parse(context)
 end
 
 function public:ToString()
-    local str = ""
+    local str = "["
     for i, v in pairs(self.list) do
-        str = string.format("%s %s", str, v:ToString())
+        str = string.format("%s%s%s", str, i == 1 and "" or ", ", v:ToString())
     end
+    str = str.."]"
     return str
 end
 
