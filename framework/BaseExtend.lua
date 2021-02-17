@@ -4,6 +4,10 @@
     time : 2020-11-10 10:54
     purpose : Is is used to expand the function of base.
 ]]
+require("framework.Readonly")
+
+INNER_MT_TYPES = Readonly {module = "OOP_module", inst = "OOP_inst", shell = "OOP_shell", class = "OOP_class", super = "OOP_super", member = "OOP_member"}
+
 DataTypes = {Func = "function", Tbl = "table", Str = "string", Num = "number"}
 function IsFunction(v)
     return type(v) == DataTypes.Func
@@ -18,19 +22,57 @@ function IsNumber(v)
     return type(v) == DataTypes.Num
 end
 
-local rawRequire = require
-function require(...)
-    local args = {...}
-    if package.loaded[args[1]] == nil then
-        --@TODO 2020-11-12 16:41:35 做必要的检测处理
-        --1.例如，创建一个对象，调用所有的public方法，检测方法内的错误？这需要合理的参数才行
-        package.loaded[args[1]] = rawRequire(...)
+
+local function printRequire(path, n, a)
+    local str = " "
+    for i = 1, n do
+        str = str .. "\t"
     end
-    return package.loaded[args[1]]
+    str = n..str..string.format("require : %s:", a)
+    print(str, path)
+end
+
+local tCount = 0
+local isRunBusiness = false
+--Whether to print the require structure of the framework
+local tempPrint = false
+local rawRequire = require
+local function newRrequire(...)
+    local args = {...}
+    local path = args[1]
+    if isRunBusiness or not tempPrint then
+        rawRequire(path)
+    else
+        printRequire(path, tCount, ">>>")
+        tCount = tCount + 1
+        rawRequire(path)
+        tCount = tCount - 1
+        printRequire(path, tCount, "<<<")
+        if tCount == 0 then print("") end
+    end
+    return package.loaded[path]
+end
+
+--The following code is used to solve the Lua language cyclic dependency problem.
+function require(path)
+    if isRunBusiness then
+        return setmetatable({__type = INNER_MT_TYPES.module}, {
+            __index = function(t, k)
+                t = newRrequire(path)
+                if k == "shell" then
+                    return t
+                end
+                return t[k]
+            end
+        })
+    else
+        newRrequire(path)
+    end
 end
 
 --限制错误的定义全局数据
 function Limit_G()
+    isRunBusiness = true
     local __g = _G
     lgv = {}
     setmetatable(lgv, {

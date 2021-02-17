@@ -5,8 +5,6 @@
 ]]
 require("framework.BaseExtend")
 require("framework.TableExtend")
-require("framework.Bit")
-require("framework.Readonly")
 
 --@region import function (考虑提取)
 
@@ -44,7 +42,7 @@ local StorageType =  {default = nil, static = 2}  --------------------作为访�
 local DomainType =  {private = nil, public = 1, protected = 2}    ----访问域，在static和非static都有
 local ReadType =  {default = nil, readonly = 1}  ---------------------仅对MemberType中default起作用
 local MemberType =  {default = nil, set = 1, get = 2} ----------------成员类型，default包含function、variable
-local ValueType = {default = nil, reference = 1}
+local ValueType = {default = nil, reference = 1}----------------------数据类型，default--值类型，referance引用类型
 
 local MemberProperties = {static = "s", domain = "d", readonly = "r", member = "m", value = "v", name = "n", class = "c", vt = "vt"}
 local MemberPropertieTypes = {d = DomainType, r = ReadType, s = StorageType, t = MemberType}
@@ -82,7 +80,7 @@ end
 local OOP_CLS_NAME = "class"
 local OOP_CLASS_NAME = "__name"
 local OOP_CTOR_NAME = "ctor"
-local INNER_MT_TYPES = {inst = "OOP_inst", shell = "OOP_shell", class = "OOP_class", super = "OOP_super", member = "OOP_member"}
+
 local INNER_CLASS_NAME = "__shell"
 local Null = {__name = "Null"}
 local NullFunc = function() end
@@ -215,7 +213,11 @@ end
 
 local AllCls = {}
 local function GetClassOfShell(shell)
-    return shell and AllCls[shell]
+    if shell == nil then return nil end
+    if shell.__type == INNER_MT_TYPES.module then
+        shell = shell.shell
+    end
+    return AllCls[shell]
 end
 
 --这里获取的原始class
@@ -404,7 +406,7 @@ end
 
 --获取super成员 相关
 
-local function GetNearFunc(k, cls, super)
+local function GetNearMember(k, cls, super)
     while true do
         local member = rawget(cls, k)
         if member ~= nil then
@@ -517,7 +519,7 @@ end
 
 --@endregion
 
---@region class create
+--@region create inst
 
 local function CheckAbstract(cls)
     if rawget(cls, "abstract") then
@@ -624,17 +626,15 @@ local function DoAccessMember(t, inst, cls, member)
         --static的方法，也不用提供
         return AccessStaticMember(cls, k)
     else
-        local curInstMember = rawget(inst, k)
-        local instNoMember = curInstMember == nil
         if IsFunction(member.v) then
             return GetFuncProxy(t, inst, cls, member)
         else
             --访问变量的处理
-            if instNoMember then
+            if GetFilterNull(rawget(inst, k)) == nil then
                 if member.s == StorageType.default and member.m == MemberType.default then
-                    --只有非static、default的变量，需要拷贝
-                    --super的方法，拷贝到子类，就失去了访问super的private成员的权限了，所有不能拷贝方法
-                    rawset(inst, k, CopyValue(member.v))
+                    --只有非static、default的变量，需要拷贝到实例inst
+                    --super的方法，拷贝到实例inst，就失去了访问super的private成员的权限了，所有不能拷贝方法
+                    rawset(inst, k, CopyValue(GetFilterNull(member.v)))
                 end
             end
             --因为curClsMember为空时，由于上面逻辑，可能补充写入，所以还是要用rawget再尝试取一下的；因此下面的逻辑不要优化
@@ -718,11 +718,10 @@ local function CreateSelfProxy(cls)
         else
             local oriCls = GetClassOfInst(t)
             if oriCls ~= cls then
-                local newMember = GetNearFunc(k, oriCls, cls)
+                local newMember = GetNearMember(k, oriCls, cls)
                 --使用原始类及其上层的方法，不用检测访问域，但是方法内部，还是得切换cls才能正常执行
                 --GetNearFunc已按照合适访问域，查找，所以不用进行访问域判定
                 if newMember then
-                    --此处调整inst的层级，仅为通过“:”(冒号)访问的检测
                     return AccessMember(t, t, cls, newMember, true)
                 end
             end
