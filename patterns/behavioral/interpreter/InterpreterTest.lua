@@ -45,7 +45,7 @@ function _M.protected:DoExecTest()
             print(string.format("text = \"%s\"", text))
             local node = ProgramNode.new()
             node:Parse(Context.new(text))
-            print(string.format("node = %s", node:ToString()))
+            print(string.format("node = %s\n", node:ToString()))
         end
     end
 end

@@ -16,13 +16,12 @@ function public:Parse(context)
     context:SkipToken("repeat")
     self.number = context.curToken
     context:NextToken()
-    print("----111-----", CommandListNode)
     self.cmdListNode = CommandListNode.new()
     self.cmdListNode:Parse(context)
 end
 
 function public:ToString()
-    return string.format("[repeat %s %s]", self.number, self.cmdListNode:ToString())
+    return string.format("[repeat %s%s]", self.number, self.cmdListNode:ToString())
 end
 
 return _M

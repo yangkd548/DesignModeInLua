@@ -13,7 +13,6 @@ _M.cmdListNode = nil
 
 function public:Parse(context)
     context:SkipToken("program")
-    print("----000-----", CommandListNode)
     self.cmdListNode = CommandListNode.new()
     self.cmdListNode:Parse(context)
 end
