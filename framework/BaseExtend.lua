@@ -66,7 +66,7 @@ function require(path)
             end
         })
     else
-        newRrequire(path)
+        return newRrequire(path)
     end
 end
 
