@@ -10,7 +10,7 @@ local super = require("patterns.BaseTest")
 local _M = Class("IteratorTest", super)
 
 function _M.protected:DoExecTest()
-    local bookShelf = BookShelf.new(4);
+    local bookShelf = BookShelf.new(4)
     local bookNames = {
         "Around the World in 80 Days",
         "Bible",

@@ -312,6 +312,7 @@ local function CheckCoverError(cls, k, pMember)
         local member = rawget(cls, k)
         if member ~= nil then
             if cur == cls then
+                --@TODO 解决同时有get、set，如何正常访问和检测的问题
                 ErrorCoverCurClassMember(cur, k)
             end
             local domain = member.d
