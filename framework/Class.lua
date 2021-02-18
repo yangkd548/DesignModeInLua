@@ -42,9 +42,11 @@ local StorageType =  {default = nil, static = 2}  --------------------作为访�
 local DomainType =  {private = nil, public = 1, protected = 2}    ----访问域，在static和非static都有
 local ReadType =  {default = nil, readonly = 1}  ---------------------仅对MemberType中default起作用
 local MemberType =  {default = nil, set = 1, get = 2} ----------------成员类型，default包含function、variable
-local ValueType = {default = nil, reference = 1}----------------------数据类型，default--值类型，referance引用类型
+--@TODO 需要在使用手册中，增加
+--_M.xxx = {}赋值，实例化时，仅是浅拷贝
+--_M:ctor中self.xxx = {}赋值，实例化时，是各个inst分离的，相当于深拷贝
 
-local MemberProperties = {static = "s", domain = "d", readonly = "r", member = "m", value = "v", name = "n", class = "c", vt = "vt"}
+local MemberProperties = {static = "s", domain = "d", readonly = "r", member = "m", value = "v", name = "n", class = "c"}
 local MemberPropertieTypes = {d = DomainType, r = ReadType, s = StorageType, t = MemberType}
 
 local function GetKeyByValue(tbl, value)
@@ -60,8 +62,7 @@ local ModifyKeyProperty = {
     static = MemberProperties.static,
     readonly = MemberProperties.readonly,
     set = MemberProperties.member, get = MemberProperties.member,
-    name = MemberProperties.name,
-    vt = MemberProperties.vt
+    name = MemberProperties.name
 }
 
 local function GetClassName(cls)

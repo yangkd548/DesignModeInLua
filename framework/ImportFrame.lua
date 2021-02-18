@@ -5,6 +5,7 @@
     purpose : Import the required framework scripts
 ]]
 --"BaseExtend" modifies the "require", but does not use the modified "require".
+--@TODO 需要实现require方法，能够兼容，相对于当前文件的路径的require
 require("framework.BaseExtend")
 require("framework.PathExtend")
 require("framework.TableExtend")
