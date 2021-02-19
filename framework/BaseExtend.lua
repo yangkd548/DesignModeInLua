@@ -6,7 +6,7 @@
 ]]
 require("framework.Readonly")
 
-INNER_MT_TYPES = Readonly {module = "OOP_module", inst = "OOP_inst", shell = "OOP_shell", class = "OOP_class", super = "OOP_super", member = "OOP_member"}
+INNER_MT_TYPES = Readonly {module = "OOP_module", inst = "OOP_inst", shell = "OOP_shell", class = "OOP_class", super = "OOP_super", member = "OOP_member", domain = "OOP_domain"}
 
 DataTypes = {Func = "function", Tbl = "table", Str = "string", Num = "number"}
 function IsFunction(v)

@@ -1,20 +1,20 @@
 --[[
-    Module:Bit
+    Module:bit
     Author:DylanYang
     Time:2020-10-28 09:00:01
 ]]
 require("framework.Readonly")
 
-local Bit = {data32 = {}}
+local bit = {data32 = {}}
 for i = 1, 32 do
-    Bit.data32[i] = 2 ^ (32 - i)
+    bit.data32[i] = 2 ^ (32 - i)
 end
 
 --十进制转二进制字符串
-function Bit:NumToBitStr(int, valid, trace)
+function bit:NumToBitStr(int, valid, trace)
     local result = self:ToString(self:NumToBitArr(int), valid)
     if trace then
-        print(string.format("Bit.NumToBitStr: %d-->%s", int, result))
+        print(string.format("bit.NumToBitStr: %d-->%s", int, result))
     end
     return result
 end
@@ -24,7 +24,7 @@ function string.getchar(s, index)
 end
 
 --二进制字符串转十进制
-function Bit:BitStrToNum(s, trace)
+function bit:BitStrToNum(s, trace)
     local n = tonumber(s)
     if n == nil then
         return nil
@@ -43,12 +43,12 @@ function Bit:BitStrToNum(s, trace)
     end
     local result = self:BitArrToNum(bitArr)
     if trace then
-        print(string.format("Bit.BitStrToNum: %s-->%s", s, result))
+        print(string.format("bit.BitStrToNum: %s-->%s", s, result))
     end
     return result
 end
 
-function Bit:NumToBitArr(int)
+function bit:NumToBitArr(int)
     local bitArr = {}
     for i = 1, 32 do
         if int >= self.data32[i] then
@@ -61,7 +61,7 @@ function Bit:NumToBitArr(int)
     return bitArr
 end
 
-function Bit:BitArrToNum(bitArr)
+function bit:BitArrToNum(bitArr)
     local num = 0
     for i = 1, 32 do
         if bitArr[i] == 1 then
@@ -71,7 +71,7 @@ function Bit:BitArrToNum(bitArr)
     return math.floor(num)
 end
 
-function Bit:Not(a)
+function bit:Not(a)
     local op1 = self:NumToBitArr(a)
     local r = {}
     for i = 1, 32 do
@@ -84,7 +84,7 @@ function Bit:Not(a)
     return self:BitArrToNum(r)
 end
 
-function Bit:And(a, b)
+function bit:And(a, b)
     local op1 = self:NumToBitArr(a)
     local op2 = self:NumToBitArr(b)
     local r = {}
@@ -98,7 +98,7 @@ function Bit:And(a, b)
     return self:BitArrToNum(r)
 end
 
-function Bit:Or(a, b)
+function bit:Or(a, b)
     local op1 = self:NumToBitArr(a)
     local op2 = self:NumToBitArr(b)
     local r = {}
@@ -112,7 +112,7 @@ function Bit:Or(a, b)
     return self:BitArrToNum(r)
 end
 
-function Bit:Xor(a, b)
+function bit:Xor(a, b)
     local op1 = self:NumToBitArr(a)
     local op2 = self:NumToBitArr(b)
     local r = {}
@@ -126,7 +126,7 @@ function Bit:Xor(a, b)
     return self:BitArrToNum(r)
 end
 
-function Bit:LeftShift(a, n)
+function bit:LeftShift(a, n)
     local op1 = self:NumToBitArr(a)
     local r = self:NumToBitArr(0)
     if n < 32 and n > 0 then
@@ -141,7 +141,7 @@ function Bit:LeftShift(a, n)
     return self:BitArrToNum(r)
 end
 
-function Bit:RightShift(a, n)
+function bit:RightShift(a, n)
     local op1 = self:NumToBitArr(a)
     local r = self:NumToBitArr(0)
     if n < 32 and n > 0 then
@@ -156,7 +156,7 @@ function Bit:RightShift(a, n)
     return self:BitArrToNum(r)
 end
 
-function Bit:ToString(ta, valid)
+function bit:ToString(ta, valid)
     local str = ""
     local valided = not valid
     for i = 1, 32 do
@@ -168,8 +168,8 @@ function Bit:ToString(ta, valid)
     return str
 end
 
-function Bit:Print(ta, valid)
-    print(Bit:ToString(ta, valid))
+function bit:Print(ta, valid)
+    print(bit:ToString(ta, valid))
 end
 
-BitTool = Readonly(Bit)
+Bit = Readonly(bit)

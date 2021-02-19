@@ -4,11 +4,11 @@
     time:2021-02-18 16:26:05
 ]]
 local _M = Class("ColorObj")
-local color = _M.readonly
+local readonly = _M.readonly
 
-color.r = nil
-color.g = nil
-color.b = nil
+readonly.r = nil
+readonly.g = nil
+readonly.b = nil
 
 function _M:ctor(r, g, b)
     self.r = r

@@ -41,13 +41,24 @@ end
 local StorageType =  {default = nil, static = 2}  --------------------作为访问域前面的存储空间的控制
 local DomainType =  {private = nil, public = 1, protected = 2}    ----访问域，在static和非static都有
 local ReadType =  {default = nil, readonly = 1}  ---------------------仅对MemberType中default起作用
-local MemberType =  {default = nil, set = 1, get = 2} ----------------成员类型，default包含function、variable
---@TODO 需要在使用手册中，增加
---_M.xxx = {}赋值，实例化时，仅是浅拷贝
---_M:ctor中self.xxx = {}赋值，实例化时，是各个inst分离的，相当于深拷贝
+--由于set和get属性，可以同名，所以需要使用二进制方式表示类型（同时为set、get,使用11），进行“与运算”不为0，则表示存在此属性
+--具体方法，保存在member[MemberType.set]或member[MemberType.get]
+local MemberType =  {default = nil, set = 1, get = 2, set_get = 3} ----------------成员类型，default包含function、variable
+
+local function IsGetFunc(m)
+    return m and Bit:And(m, MemberType.get) ~= 0
+end
+
+local function IsSetFunc(m)
+    return m and Bit:And(m, MemberType.set) ~= 0
+end
+
+local function IsCoverFuncType(om, nm)
+    return om == nil or nm == nil or Bit:And(om, nm) ~= 0
+end
 
 local MemberProperties = {static = "s", domain = "d", readonly = "r", member = "m", value = "v", name = "n", class = "c"}
-local MemberPropertieTypes = {d = DomainType, r = ReadType, s = StorageType, t = MemberType}
+local MemberPropertieTypes = {s = StorageType, d = DomainType, r = ReadType, m = MemberType}
 
 local function GetKeyByValue(tbl, value)
     for k,v in pairs(tbl) do
@@ -128,7 +139,7 @@ local function ErrorCopyInst(cls, level)
 end
 
 --成员定义 相关
-local function ErrorRepeatQualifier(k, tbl, v, level)--修饰符重复
+local function ErrorRepeatQualifier(k, tbl, v, level)--同一类型的修饰符重复（比如public和private，比如set和get）
     local sKey = GetKeyByValue(tbl, v)
     local tbl = MemberPropertieTypes[sKey]
     local key = GetKeyByValue(tbl, v)
@@ -162,7 +173,7 @@ local function ErrorCallProtected(cls, k, level)
     error(string.format("attempt to call member '%s' (protected).", GetMemberFullName(cls, k)), level or 5)
 end
 local function ErrorGet(cls, k, level)
-    error(string.format("attempt to get accessor '%s' (set).", GetMemberFullName(cls, k)), level or 3)
+    error(string.format("attempt to get accessor '%s' (set).", GetMemberFullName(cls, k)), level or 5)
 end
 local function ErrorSet(cls, k, level)
     error(string.format("attempt to set accessor '%s' (get).", GetMemberFullName(cls, k)), level or 3)
@@ -291,36 +302,26 @@ local function CopyMember(member)
     return member and table.copy(member) or {}
 end
 
-local function DoSetMemberValue(member, cls, k, v)
-    --仅有ctor，默认填protected访问域
-    member.v = SetFilterNil(v)
-    member.c = cls
-    member.n = k
-    rawset(cls, k, member)
-end
-
-local function SetMemberValue(member, cls, k, v)
-    --get/set成员，必须是function，否则报错
-    if member and (member.m == MemberType.get or member.m == MemberType.set) and not IsFunction(v) then
-        ErrorMustFunction(string.format("%s.%s.%s", cls.__name, GetKeyByValue(MemberType, member.m), k), 5)
-    end
-    DoSetMemberValue(member, cls, k, v)
-end
-
-local function CheckCoverError(cls, k, pMember)
+local function CheckCoverError(cls, k, qualifyMember, isStatic)
     local cur = cls
     while true do
+        if isStatic then cls = GetSuperCls(cls) end
+        if cls == Null then
+            return
+        end
         local member = rawget(cls, k)
         if member ~= nil then
-            if cur == cls then
+            if cur == cls and qualifyMember ~= nil then
                 --@TODO 解决同时有get、set，如何正常访问和检测的问题
-                ErrorCoverCurClassMember(cur, k)
+                if IsCoverFuncType(qualifyMember.m, member.m) then
+                    ErrorCoverCurClassMember(cur, k)
+                end
             end
             local domain = member.d
             --除了private都允许复写
             if domain == DomainType.private then
                 ErrorCoverSuperPrivateMember(k, cls, cur)
-            elseif domain ~= pMember.d then
+            elseif domain ~= qualifyMember.d then
                 ErrorCoverSuperDiffDoamin(k, cls, cur)
             else
                 return
@@ -328,47 +329,73 @@ local function CheckCoverError(cls, k, pMember)
         end
         --使用最原始的获取基类的方法
         cls = GetSuperCls(cls)
-        if cls == Null then
-            return
+    end
+end
+
+local function SetMemberValue(newMember, cls, k, v, isStatic)
+    if k ~= OOP_CTOR_NAME then
+        CheckCoverError(cls, k, newMember, isStatic)
+        --get/set成员，必须是function，否则报错
+        if newMember and newMember.m ~= MemberType.default and not IsFunction(v) then
+            ErrorMustFunction(string.format("%s.%s.%s", cls.__name, GetKeyByValue(MemberType, newMember.m), k), 5)
+        end
+    end
+    local last = rawget(cls, k)
+    local member = last or newMember
+    if member.m == MemberType.default then
+        --包含ctor的处理
+        member.v = SetFilterNil(v)
+    else
+        member[newMember.m] = SetFilterNil(v)
+    end
+    if last ~= member then
+        member.c = cls
+        member.n = k
+        rawset(cls, k, member)
+    else
+        if not member.m or not newMember.m then
+            member.m = member.m or newMember.m
+        else
+            member.m = Bit:Or(member.m, newMember.m)
         end
     end
 end
 
-local function AddMember(cls, k, v, member)
+local function AddMember(cls, k, v, qualifyMember)
     if IsKeyword(k) then
         ErrorDefineKeyword(k)
     end
+    local member
     if k == OOP_CTOR_NAME then
         if rawget(cls, k).v ~= NullFunc then
             ErrorRepeatDefine(cls, k)
         elseif not IsFunction(v) then
             ErrorMustFunction(string.format("%s.%s", cls.__name, k), 5)
-        elseif member and #member > 1 then
+        elseif qualifyMember and #qualifyMember > 1 then
             ErrorCtorProperties(cls)
-        else
-            member = member and CopyMember(member) or {d = DomainType.protected}
-            DoSetMemberValue(member, cls, k, v)
         end
-    else
-        CheckCoverError(cls, k, member)
-        SetMemberValue(CopyMember(member), cls, k, v)
     end
+    SetMemberValue(CopyMember(qualifyMember), cls, k, v)
 end
 
 --@endregion
 
 --@region get member function
 
-local function AccessStaticMember(cls, k)
+local function DoAccessStaticMember(member)
+    return GetFilterNull(member.v)
+end
+
+local function AccessStaticMember(cls, k, t)
     local member = cls[k]
     if member then
         if member.s == StorageType.static then
-            if member.m == MemberType.set then
+            if IsGetFunc(member.m) then
+                return member[MemberType.get](t)
+            elseif IsSetFunc(member.m) then
                 ErrorGet(cls, k)
-            elseif member.m == MemberType.get then
-                return member.v()
             else
-                return GetFilterNull(member.v)
+                return DoAccessStaticMember(member)
             end
         else
             ErrorNotStatic(cls, k)
@@ -378,27 +405,29 @@ local function AccessStaticMember(cls, k)
     end
 end
 
-local function GetMember(cls, k, member)
+local function GetMember(t, k, cls, qualifyMember)
     local addPropertyFunc = ModifyKeyFunc[k]
     if addPropertyFunc then
-        local mv = member and member[ModifyKeyProperty[k]]
+        local mv = cls[ModifyKeyProperty[k]]
         if mv ~= nil then
-            ErrorRepeatQualifier(k, member, mv)
+            ErrorRepeatQualifier(k, qualifyMember, mv)
         else
-            member = CopyMember(member)
-            addPropertyFunc(member, k)
-            return setmetatable({__type = INNER_MT_TYPES.member}, {
+            qualifyMember = CopyMember(qualifyMember)
+            addPropertyFunc(qualifyMember, k)
+            --这里设置访问域等代理
+            return setmetatable({__type = INNER_MT_TYPES.domain}, {
                 __index = function(t, k)
-                    return GetMember(cls, k, member)
+                    return GetMember(t, k, cls, qualifyMember)
                 end,
                 __newindex = function(t, k, v)
-                    AddMember(cls, k, v, member)
+                    AddMember(cls, k, v, qualifyMember)
                 end,
-                __metatable = INNER_MT_TYPES.member
+                __metatable = INNER_MT_TYPES.domain
             })
         end
     else
-        return AccessStaticMember(cls, k)
+        --通过shell，除了访问域等代理，还能访问static成员
+        return AccessStaticMember(cls, k, t)
     end
 end
 
@@ -620,13 +649,13 @@ end
 
 local function DoAccessMember(t, inst, cls, member)
     local k = member.n
-    if member.m == MemberType.set then
+    if IsGetFunc(member.m) then
+        --如果是static的get，哪个对象访问，则传入哪个对象
+        return member[MemberType.get](inst)
+    elseif IsSetFunc(member.m) then
         ErrorGet(cls, k)
-    elseif member.m == MemberType.get then
-        return member.v(inst)
     elseif member.s == StorageType.static then
-        --static的方法，也不用提供
-        return AccessStaticMember(cls, k)
+        return DoAccessStaticMember(member)
     else
         if IsFunction(member.v) then
             return GetFuncProxy(t, inst, cls, member)
@@ -678,13 +707,14 @@ local function CreateSuperProxy(inst, cls, fromK, func)
             if k == OOP_CTOR_NAME and fromK ~= k then
                 --super方法，只允许在同名方法中进行访问！！！
                 ErrorAttemptCtor(envCls, k)
-            elseif k == OOP_CLASS_NAME then
+            end
+            if k == OOP_CLASS_NAME then
                 return GetShellOfInst(inst).__name
             else
                 local member = super[k]
                 if member == nil then
                     ErrorNoExist(cls, k, 3)
-                elseif member.m == nil and not IsFunction(member.v) then
+                elseif member.m == MemberType.default and not IsFunction(member.v) then
                     --禁止通过self.super.PPPP访问变量成员
                     ErrorAttemptSuperVar(super, k)
                 else
@@ -752,13 +782,14 @@ local function CreateSelfProxy(cls)
                             ErrorReadOnly(cls, k)
                         end
                     end
-                    if member.m == MemberType.get then
+                    
+                    if IsSetFunc(member.m) then
+                        member[MemberType.set](t, v)
+                    elseif IsGetFunc(member.m) then
                         ErrorSet(cls, k)
-                    elseif member.m == MemberType.set then
-                        member.v(t, v)
                     elseif member.s == StorageType.static then
-                        --static设置类模板的成员的数值
-                        SetMemberValue(member, cls, k, v)
+                        --只有static的静态成员，可以通过在运行时进行设置
+                        SetMemberValue(member, cls, k, v, true)
                     else
                         rawset(t, k, SetFilterNil(v))
                     end
@@ -767,6 +798,7 @@ local function CreateSelfProxy(cls)
         end
     end
 end
+
 --@endregion
 
 --@region class creator
@@ -794,7 +826,7 @@ local function CreateClassProxy(cls)
                     if Is__Property(k) then
                         ErrorForbid__Property(k, 3)
                     else
-                        return GetMember(cls, k)
+                        return GetMember(t, k, cls)
                     end
                 end
             end,
@@ -839,7 +871,7 @@ local function SetClassProperties(cls, name, createFunc, type)
     cls.__ctype = type
     cls.__type = INNER_MT_TYPES.class
     cls.__metatable = INNER_MT_TYPES.class
-    cls.ctor = {c = cls, v = NullFunc, n = OOP_CTOR_NAME, t = DomainType.protected}
+    cls.ctor = {c = cls, v = NullFunc, n = OOP_CTOR_NAME, d = DomainType.protected}
     SetNewFunc(cls, createFunc)
 end
 
@@ -881,3 +913,7 @@ function Class(name, super)
 end
 
 --@endregion
+
+--@TODO 需要在使用手册中，增加
+--_M.xxx = {}赋值，实例化时，仅是浅拷贝
+--_M:ctor中self.xxx = {}赋值，实例化时，是各个inst分离的，相当于深拷贝
