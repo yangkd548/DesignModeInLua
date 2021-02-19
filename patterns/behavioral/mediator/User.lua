@@ -14,12 +14,12 @@ function _M:ctor(name)
     self._name = name
 end
 
--- function public.set:name(value)
---     self._name = value
--- end
-
 function public.get:name()
     return self._name
+end
+
+function public.set:name(value)
+    self._name = value
 end
 
 function public:SetMediator(mediator)
