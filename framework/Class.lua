@@ -917,3 +917,10 @@ end
 --@TODO 需要在使用手册中，增加
 --_M.xxx = {}赋值，实例化时，仅是浅拷贝
 --_M:ctor中self.xxx = {}赋值，实例化时，是各个inst分离的，相当于深拷贝
+
+--@TODO 实现Interface功能
+--要求子类必须实现interface规定的方法
+
+--@TODO 实现Class类访问权限的功能
+--public：全局访问权限
+--firendly：包级访问权限
