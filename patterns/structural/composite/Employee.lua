@@ -23,8 +23,9 @@ function public:Add(emp)
 end
 
 function public:Remove(emp)
-    if table.indexof(self.subordinates, emp) then
-        table.remove(self.subordinates, emp)
+    local i = table.indexof(self.subordinates, emp)
+    if i then
+        table.remove(self.subordinates, i)
     end
 end
 

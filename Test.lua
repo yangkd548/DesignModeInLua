@@ -21,9 +21,9 @@ print("二进制‘与运算’5：", Bit:And(2, 2))
 print("二进制‘与运算’6：", Bit:And(3, 2))
 print("二进制‘与运算’7：", Bit:And(3, 1))
 
-local a = {1,2,3,4}
+local a = {"a","b","c","d"}
 
-local b = table.remove(a, a[1])
+local b = table.remove(a, 1)
 print(a, b)
 
 
