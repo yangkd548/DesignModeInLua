@@ -70,7 +70,7 @@ function require(path)
     end
 end
 
---限制错误的定义全局数据
+--Avoid overwriting global variables by disabed the definition of global variables.
 function Limit_G()
     isRunBusiness = true
     local __g = _G
@@ -103,9 +103,57 @@ function handlerPlus(obj, method, ...)
     end
 end
 
-function luaVersion()
-    return _VERSION
-end
+luaVersion = _VERSION
 
 --Unify the differences in the 'loadstring' function in the different versions of Lua.
 loadstring = loadstring or load
+
+local tab = "\t"
+local tabs = nil
+
+local rawPrint = print
+function print(...)
+    tabs = nil
+    local args = {...}
+    local temps = {}
+    for i,v in ipairs(args) do
+        table.insert(temps, v and IsTable(v) and v.ToString and v:ToString() or v)
+    end
+    rawPrint(unpack(temps))
+end
+
+local function printf(s)
+    local ss = string.split("\n")
+    for i,v in ipairs(ss) do
+        print(tabs, v)
+    end
+end
+
+function printlt(...)
+    local args = {...}
+    if #args > 0 then
+        if tabs then
+            printl(...)
+            tabs = tabs..tab
+        else
+            print(...)
+            tabs = tab
+        end
+    else
+        tabs = tabs
+    end
+end
+
+function printl(...)
+    local args = {...}
+    if #args == 0 then
+        --Don't reset 'tabs', don't print 'tabs', just print a blank line.
+        rawPrint()
+    else
+        if #args == 1 then
+            printf(args[1])
+        else
+            print(tabs, ...)
+        end
+    end
+end

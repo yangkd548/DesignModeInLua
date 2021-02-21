@@ -12,6 +12,7 @@ _M.sealed = false
 
 _M._money = nil
 _M._fruits = {}
+_M._index = nil
 
 function public:SetSealed()
     self.sealed = true
@@ -38,6 +39,18 @@ end
 function public.set:fruits(value)
     if not self.sealed then
         self._fruits = table.copy(value)
+    else
+        self:ErrorSealed()
+    end
+end
+
+function public.get:index()
+    return self._index
+end
+
+function public.set:index(value)
+    if not self.sealed then
+        self._index = value
     else
         self:ErrorSealed()
     end

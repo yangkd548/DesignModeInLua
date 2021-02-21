@@ -20,3 +20,13 @@ print("二进制‘与运算’4：", Bit:And(2, 1))
 print("二进制‘与运算’5：", Bit:And(2, 2))
 print("二进制‘与运算’6：", Bit:And(3, 2))
 print("二进制‘与运算’7：", Bit:And(3, 1))
+
+local tests = {}
+tostring(tests)
+local str = tostring(tests)
+print(str)
+
+require("framework.StringExtend")
+
+local ss = string.split("6666666", "\n")
+print(#ss, ss)
