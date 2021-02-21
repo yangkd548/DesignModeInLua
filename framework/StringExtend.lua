@@ -3,6 +3,7 @@
     author : DylanYang
     time : 2020-10-27 20:46:56
     purpose : Is is used to expand the function of string.
+    advance: https://www.runoob.com/lua/lua-strings.html
 ]]
 
 function string.getchar(s, index)
@@ -35,4 +36,8 @@ function string.format(...)
         end
     end
     return rawFormat(unpack(temps))
+end
+
+function string.isempty(s)
+    return s == nil or #s == 0
 end

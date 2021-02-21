@@ -52,11 +52,18 @@ function table.tostring(tbl, space)
     return result
 end
 
+function table.removeItem(tbl, item)
+    local i = table.indexof(tbl, item)
+    if i then
+        return table.remove(tbl, i)
+    end
+end
+
 --Delete elements from "s"(contain) to "e"(contains).
 function table.sub(tbl, s, e)
     e = e == nil and #tbl or math.min(e, #tbl)
     for i = e, s do
-        table.remove(tbl, tbl[i])
+        table.remove(tbl, i)
     end
 end
 

@@ -110,10 +110,11 @@ loadstring = loadstring or load
 
 local tab = "\t"
 local tabs = nil
+local tabCount = 0
 
 local rawPrint = print
-function print(...)
-    tabs = nil
+
+local function doPrint(...)
     local args = {...}
     local temps = {}
     for i,v in ipairs(args) do
@@ -122,25 +123,55 @@ function print(...)
     rawPrint(unpack(temps))
 end
 
-local function printf(s)
-    local ss = string.split("\n")
-    for i,v in ipairs(ss) do
-        print(tabs, v)
+function print(...)
+    tabs = nil
+    doPrint(...)
+end
+
+function println(...)
+    doPrint(...)
+end
+
+local function printf(args)
+    local f = table.remove(args, 1)
+    if f then
+        if IsString(f) then
+            local ss = string.split(f, "\n")
+            if #ss > 1 then
+                for i,v in ipairs(ss) do
+                    println(tabs..v)
+                end
+                println(unpack(args))
+            else
+                println(tabs..f, unpack(args))
+            end
+        elseif IsTable(f) then
+            println(tabs..(f.ToString and f:ToString() or tostring(f)), unpack(args))
+        end
+    else
+        println("nil", unpack(args))
     end
 end
 
 function printlt(...)
     local args = {...}
+    tabs = tabs == nil and tab or tabs..tab
     if #args > 0 then
-        if tabs then
-            printl(...)
-            tabs = tabs..tab
+        printl(...)
+    end
+end
+
+function printlb(...)
+    local args = {...}
+    if not string.isempty(tabs) then
+        if #tabs == 1 then
+            tabs = nil
         else
-            print(...)
-            tabs = tab
+            tabs = string.sub(tabs, -#tabs + 1)
         end
-    else
-        tabs = tabs
+    end
+    if #args > 0 then
+        printl(...)
     end
 end
 
@@ -148,12 +179,16 @@ function printl(...)
     local args = {...}
     if #args == 0 then
         --Don't reset 'tabs', don't print 'tabs', just print a blank line.
-        rawPrint()
+        rawPrint("")
     else
-        if #args == 1 then
-            printf(args[1])
-        else
-            print(tabs, ...)
-        end
+        tabs = tabs or ""
+        printf(args)
     end
 end
+
+--@TODO print相关扩展 说明：
+--printlt   增加缩进，并进行打印
+--printlb   减少缩进，并进行打印
+--printl    保持缩进，并进行打印
+--print     常规打印，重置缩进
+--println   常规打印，不重置缩进

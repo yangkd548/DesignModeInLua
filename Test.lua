@@ -21,12 +21,15 @@ print("二进制‘与运算’5：", Bit:And(2, 2))
 print("二进制‘与运算’6：", Bit:And(3, 2))
 print("二进制‘与运算’7：", Bit:And(3, 1))
 
-local tests = {}
-tostring(tests)
-local str = tostring(tests)
-print(str)
+local a = {1,2,3,4}
 
-require("framework.StringExtend")
+local b = table.remove(a, a[1])
+print(a, b)
 
-local ss = string.split("6666666", "\n")
-print(#ss, ss)
+
+local a = "a"
+
+print(#a)
+
+local t = string.sub(a, 1)
+print("-----", #t, t)
