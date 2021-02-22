@@ -139,11 +139,19 @@ local function printf(args)
             local ss = string.split(f, "\n")
             if #ss > 1 then
                 for i,v in ipairs(ss) do
+                    --避免v是nil
+                    v = v or ""
                     println(tabs..v)
                 end
-                println(unpack(args))
+                if #args > 1 then
+                    println(unpack(args))
+                end
             else
-                println(tabs..f, unpack(args))
+                if #args > 1 then
+                    println(tabs..f, unpack(args))
+                else
+                    println(tabs..f)
+                end
             end
         elseif IsTable(f) then
             println(tabs..(f.ToString and f:ToString() or tostring(f)), unpack(args))

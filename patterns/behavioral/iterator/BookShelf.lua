@@ -3,7 +3,7 @@
     author:DylanYang
     time:2021-02-18 10:02:55
 ]]
-local BookShelfIterator = require("patterns.behavioral.iterator.BookShelfIterator")
+local CommonItetator = require("patterns.behavioral.iterator.CommonItetator")
 local Book = require("patterns.behavioral.iterator.Book")
 
 local super = require("patterns.behavioral.iterator.Aggregate")
@@ -19,7 +19,7 @@ function _M:ctor(maxsize)
     self.maxsize = maxsize
 end
 
-function public:GetBookAt(index)
+function public:GetAt(index)
     return self.books[index]
 end
 
@@ -40,7 +40,7 @@ function public:AppendBook(book)
 end
 
 function public.get:iterator()
-    return BookShelfIterator.new(self)
+    return CommonItetator.new(self)
 end
 
 return _M

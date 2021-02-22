@@ -10,4 +10,10 @@ local public = _M.public
 function public.get:iterator()
 end
 
+function public:GetAt(index)
+end
+
+function public.get:length()
+end
+
 return _M

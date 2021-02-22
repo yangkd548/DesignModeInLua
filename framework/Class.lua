@@ -924,3 +924,8 @@ end
 --@TODO 实现Class类访问权限的功能
 --public：全局访问权限
 --firendly：包级访问权限
+
+--@TODO 实现abstract虚方法的实现检测功能
+
+--@TODO 实现“非静态 成员”，在ctor时，进行浅拷贝的处理
+--@TODO 实现“非静态 成员”，AddMember时，检测对象是否是inst实例，如果是实例，在ctor时，进行copyMember处理
