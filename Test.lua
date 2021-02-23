@@ -33,3 +33,19 @@ print(#a)
 
 local t = string.sub(a, 1)
 print("-----", #t, t)
+
+
+local a = {"abc","bca","bcd","aaa"}
+
+for i,v in ipairs(a) do
+    print(i, v)
+end
+
+local b = table.sort(a)
+
+for i,v in ipairs(a) do
+    print(i, v)
+end
+
+print(a)
+print(b)
