@@ -13,9 +13,9 @@ local super = require("patterns.BaseTest")
 local _M = Class("StrategyTest", super)
 
 function _M.protected:DoExecTest()
-    local player1 = Player.new("Taro", WinningStrategy.new(random.nextInt(100, 200)))
+    local player1 = Player.new("Tariabs-", WinningStrategy.new(random.nextInt(100, 200)))
     local player2 = Player.new("Hana", ProbStrategy.new(random.nextInt(100)))
-    for i = 0, 30 do
+    for i = 1, 10 do
         local nextHand1 = player1.nextHand
         local nextHand2 = player2.nextHand
         if nextHand1:IsStrongerThan(nextHand2) then
