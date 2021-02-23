@@ -32,7 +32,7 @@ function string.format(...)
         if i == 1 then
             table.insert(temps, v)
         else
-            table.insert(temps, v and (IsTable(v) and v.ToString and v:ToString() or v) or nilStr)
+            table.insert(temps, v and (IsTable(v) and IsFunction(v.ToString) and v:ToString() or tostring(v)) or nilStr)
         end
     end
     return rawFormat(unpack(temps))

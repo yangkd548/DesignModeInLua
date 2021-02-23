@@ -381,6 +381,11 @@ end
 --@endregion
 
 --@region get member function
+local function NoMember(cls, k, level)
+    if k ~= "ToString" then
+        ErrorNoExist(cls, k, level)
+    end
+end
 
 local function DoAccessStaticMember(member)
     return GetFilterNull(member.v)
@@ -401,7 +406,7 @@ local function AccessStaticMember(cls, k, t)
             ErrorNotStatic(cls, k)
         end
     else
-        ErrorNoExist(cls, k)
+        NoMember(cls, k)
     end
 end
 
@@ -713,7 +718,7 @@ local function CreateSuperProxy(inst, cls, fromK, func)
             else
                 local member = super[k]
                 if member == nil then
-                    ErrorNoExist(cls, k, 3)
+                    NoMember(cls, k, 3)
                 elseif member.m == MemberType.default and not IsFunction(member.v) then
                     --禁止通过self.super.PPPP访问变量成员
                     ErrorAttemptSuperVar(super, k)
@@ -759,7 +764,7 @@ local function CreateSelfProxy(cls)
             end
             local member = cls[k]
             if member == nil then
-                ErrorNoExist(cls, k, 3)
+                NoMember(cls, k, 3)
             else
                 return AccessMember(t, t, cls, member)
             end
@@ -772,7 +777,7 @@ local function CreateSelfProxy(cls)
         else
             local member = cls[k]
             if member == nil then
-                ErrorNoExist(cls, k, 3)
+                NoMember(cls, k, 3)
             else
                 if CheckDomain(member, cls) then
                     if member.r == ReadType.readonly then
