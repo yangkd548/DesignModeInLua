@@ -19,15 +19,15 @@ function public:DoClock(context, hour)    -- 设置时间
 end
 
 function public:DoUse(context)                -- 使用金库
-    context:RecordLog("使用金库(白天)");
+    context:RecordLog("使用金库(白天)")
 end
 
 function public:DoAlarm(context)              -- 按下警铃
-    context:CallSecurityCenter("按下警铃(白天)");
+    context:CallSecurityCenter("按下警铃(白天)")
 end
 
 function public:DoPhone(context)              -- 正常通话
-    context:CallSecurityCenter("正常通话(白天)");
+    context:CallSecurityCenter("正常通话(白天)")
 end
 
 function public:ToString()
