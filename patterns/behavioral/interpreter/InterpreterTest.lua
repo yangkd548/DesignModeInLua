@@ -33,7 +33,6 @@ local _M = Class("InterpreterTest", super)
 ]]
 
 function _M.protected:DoExecTest()
-    -- @TODO 需要开发BuffereReader工具类
     local filename = string.format("%s.txt", "program")
     local path = string.format("%s/%s", os.GetCurDir(), filename)
     local reader = BufferedReader.new(FileReader.new(path))

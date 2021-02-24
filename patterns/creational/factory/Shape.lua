@@ -6,7 +6,6 @@
 local _M = Class("Shape")
 local public = _M.public
 
---@TODO 需要进一步实现interface接口的功能
 function public:Draw()
 end
 
