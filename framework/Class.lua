@@ -936,3 +936,5 @@ end
 --@TODO 实现“非静态 成员”，AddMember时，检测对象是否是inst实例，如果是实例，在ctor时，进行copyMember处理
 
 --@TODO 实现方法的final修饰符，禁止覆写该方法
+
+--@TODO 实现 定义引用类型的成员变量时，转换成方法，在ctor的最前面，隐含执行
