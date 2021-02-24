@@ -10,7 +10,7 @@ local _M = Class("EJBService", interface)
 local public = _M.public
 
 function public:DoProcessing()
-    print("Processing task by invoking EJB Service.");
+    print("Processing task by invoking EJB Service.")
 end
 
 return _M

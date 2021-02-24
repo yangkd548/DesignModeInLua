@@ -10,7 +10,7 @@ local _M = Class("JMSService")
 local public = _M.public
 
 function public:DoProcessing()
-    print("Processing task by invoking JMS Service.");
+    print("Processing task by invoking JMS Service.")
 end
 
 return _M
