@@ -12,9 +12,9 @@ local _M = Class("FrontControllerTest", super)
 local public = _M.public
 
 function _M.protected:DoExecTest()
-    local frontController = FrontController.new();
-    frontController:DispatchRequest("HOME");
-    frontController:DispatchRequest("STUDENT");
+    local frontController = FrontController.new()
+    frontController:DispatchRequest("HOME")
+    frontController:DispatchRequest("STUDENT")
 end
 
 return _M

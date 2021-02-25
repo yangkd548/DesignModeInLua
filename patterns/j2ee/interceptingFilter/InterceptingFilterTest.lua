@@ -20,7 +20,7 @@ function _M.protected:DoExecTest()
     filterManager:SetFilter(AuthenticationFilter.new())
     filterManager:SetFilter(DebugFilter.new())
 
-    local client = Client.new();
+    local client = Client.new()
     client:SetFilterManager(filterManager)
     client:SendRequest("HOME")
 end
