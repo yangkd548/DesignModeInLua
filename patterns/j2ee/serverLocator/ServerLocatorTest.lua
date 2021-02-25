@@ -12,17 +12,17 @@ local _M = Class("ServerLocatorTest", super)
 local public = _M.public
 
 function _M.protected:DoExecTest()
-    local service = ServiceLocator:GetService("Service1");
-    service:Execute();
+    local service = ServiceLocator:GetService("Service1")
+    service:Execute()
     print()
-    service = ServiceLocator:GetService("Service2");
-    service:Execute();
+    service = ServiceLocator:GetService("Service2")
+    service:Execute()
     print()
-    service = ServiceLocator:GetService("Service1");
-    service:Execute();
+    service = ServiceLocator:GetService("Service1")
+    service:Execute()
     print()
-    service = ServiceLocator:GetService("Service2");
-    service:Execute();
+    service = ServiceLocator:GetService("Service2")
+    service:Execute()
 end
 
 return _M

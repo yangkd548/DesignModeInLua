@@ -30,13 +30,13 @@ function public:GetStudent(rollNo)
 end
 
 function public:UpdateStudent(student)
-    --这里的作用，是否有问题？
+    --This code can't do a real simulation.
     self.students[student.rollNo].name = student.name
     print(string.format("Student: Roll No %s, updated in the database", student.rollNo))
 end
 
 function public:DeleteStudent(student)
-    students.remove(student.rollNo)
+    table.removeItem(self.students, student)
     print(string.format("Student: Roll No %s, deleted from database.", student.rollNo))
 end
 

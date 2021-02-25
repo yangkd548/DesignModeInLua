@@ -14,15 +14,15 @@ local _M = Class("MvcTest", super)
 local public = _M.public
 
 function _M.protected:DoExecTest()
-    --从数据库获取学生记录
+    --Get student records from the database.
     local model = self:RetrieveStudentFromDatabase()
 
-    --创建一个视图：把学生详细信息输出到控制台
+    --Create a view that outputs student details to the console.
     local view = StudentView.new()
     local controller = StudentController.new(model, view)
     controller:UpdateView()
 
-    --更新模型数据
+    --Update model data
     controller.studentName = "John"
     controller:UpdateView()
 end
