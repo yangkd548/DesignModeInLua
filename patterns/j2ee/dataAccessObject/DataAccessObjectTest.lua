@@ -12,7 +12,7 @@ local _M = Class("DataAccessObjectTest", super)
 local public = _M.public
 
 function _M.protected:DoExecTest()
-    local studentDao = StudentDaoImpl.new();
+    local studentDao = StudentDaoImpl.new()
 
     --print all students
     for i, student in pairs(studentDao:GetAllStudents()) do
