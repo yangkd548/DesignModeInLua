@@ -11,7 +11,7 @@ _M.lines = nil
 _M.lineIndex = 0
 
 function _M:ctor(fileReader)
-    self.string =  fileReader.string
+    self.string = fileReader.string
 end
 
 function public:ReadLine()

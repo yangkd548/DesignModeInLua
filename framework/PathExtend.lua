@@ -4,7 +4,6 @@
     time : 2020-11-10 10:54
     purpose : Is is used to expand the function of path.
 ]]
-local NullFunc = function() end
 function os.GetCurDir()
     local path = debug.getinfo(2).source
     path = string.sub(path, 2, -1)
