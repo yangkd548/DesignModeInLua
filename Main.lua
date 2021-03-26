@@ -6,6 +6,8 @@
 print(string.format("The current lua version is %s .", _VERSION))
 
 require("framework.ImportFrame")
+require("patterns.ImportBase")
+Limit_G()
 
 require("patterns.creational.singleton.SingletonTest").new():ExecTest()
 require("patterns.creational.factory.FactoryTest").new():ExecTest()

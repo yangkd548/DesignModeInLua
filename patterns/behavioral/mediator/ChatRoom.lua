@@ -21,7 +21,7 @@ end
 
 function public:ShowMessage(user, msg)
     local gap = self.isFirst and "" or "\n"
-    local time = os.date("%Y-%m-%d %H:%M:%S", os.time()/1000)
+    local time = os.date("%Y-%m-%d %H:%M:%S", os.time())
     print(string.format("%s%s\n%s :\n\t%s", gap, time, user.name, msg))
     self.isFirst = false
 end
